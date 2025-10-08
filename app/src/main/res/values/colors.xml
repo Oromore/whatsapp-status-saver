@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- WhatsApp-inspired colors -->
+    <color name="whatsapp_green">#25D366</color>
+    <color name="whatsapp_teal">#075E54</color>
+    <color name="whatsapp_light_green">#DCF8C6</color>
+    
+    <!-- Primary colors -->
+    <color name="primary">#25D366</color>
+    <color name="primary_dark">#128C7E</color>
+    <color name="accent">#25D366</color>
+    
+    <!-- Background colors -->
+    <color name="background">#FFFFFF</color>
+    <color name="background_dark">#0E0E0E</color>
+    <color name="card_background">#F5F5F5</color>
+    
+    <!-- Text colors -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_white">#FFFFFF</color>
+    
+    <!-- Status colors -->
+    <color name="success">#4CAF50</color>
+    <color name="error">#F44336</color>
+    <color name="warning">#FF9800</color>
+    
+    <!-- Basic colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+    
+    <!-- Overlay -->
+    <color name="overlay">#80000000</color>
+</resources>

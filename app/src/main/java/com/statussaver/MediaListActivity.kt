@@ -67,14 +67,19 @@ class MediaListActivity : AppCompatActivity() {
             setAdSize(AdSize.BANNER)
         }
 
-        // Add listener to debug ad loading
         bottomAdView?.adListener = object : AdListener() {
             override fun onAdLoaded() {
-                Toast.makeText(this@MediaListActivity, "Banner loaded!", Toast.LENGTH_SHORT).show()
+                // Refresh ad every 30 seconds
+                binding.root.postDelayed({
+                    bottomAdView?.loadAd(AdRequest.Builder().build())
+                }, 30000)
             }
 
             override fun onAdFailedToLoad(error: LoadAdError) {
-                Toast.makeText(this@MediaListActivity, "Banner failed: ${error.message}", Toast.LENGTH_SHORT).show()
+                // Retry after 30 seconds on failure
+                binding.root.postDelayed({
+                    bottomAdView?.loadAd(AdRequest.Builder().build())
+                }, 30000)
             }
         }
 
@@ -225,6 +230,8 @@ class MediaListActivity : AppCompatActivity() {
         saveCount++
         prefs.edit().putInt("save_count", saveCount).apply()
 
+        Toast.makeText(this, "Saved $saveCount/10 - Interstitial at 10", Toast.LENGTH_SHORT).show()
+
         // Show interstitial after every 10 saves
         if (saveCount >= 10) {
             showInterstitialAd()
@@ -233,8 +240,13 @@ class MediaListActivity : AppCompatActivity() {
     }
 
     private fun showInterstitialAd() {
-        interstitialAd?.show(this) ?: run {
-            // Ad not ready, load a new one
+        if (interstitialAd != null) {
+            Toast.makeText(this, "Showing interstitial ad!", Toast.LENGTH_SHORT).show()
+            interstitialAd?.show(this)
+            // Reload for next time
+            loadInterstitialAd()
+        } else {
+            Toast.makeText(this, "Interstitial not ready, loading...", Toast.LENGTH_SHORT).show()
             loadInterstitialAd()
         }
     }

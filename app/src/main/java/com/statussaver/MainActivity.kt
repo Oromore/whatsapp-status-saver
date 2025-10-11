@@ -81,14 +81,23 @@ class MainActivity : AppCompatActivity() {
             setAdSize(AdSize.BANNER)
         }
 
-        // Add listener to debug ad loading
         bottomAdView?.adListener = object : AdListener() {
             override fun onAdLoaded() {
                 Toast.makeText(this@MainActivity, "Banner ad loaded!", Toast.LENGTH_SHORT).show()
+                
+                // Refresh ad every 30 seconds
+                binding.root.postDelayed({
+                    bottomAdView?.loadAd(AdRequest.Builder().build())
+                }, 30000)
             }
 
             override fun onAdFailedToLoad(error: LoadAdError) {
                 Toast.makeText(this@MainActivity, "Banner failed: ${error.message}", Toast.LENGTH_SHORT).show()
+                
+                // Retry after 30 seconds on failure
+                binding.root.postDelayed({
+                    bottomAdView?.loadAd(AdRequest.Builder().build())
+                }, 30000)
             }
         }
 
@@ -120,17 +129,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleAppOpenInterstitial() {
-        // Get app open count
         var openCount = prefs.getInt("app_open_count", 0)
         openCount++
         prefs.edit().putInt("app_open_count", openCount).apply()
 
-        // Show interstitial on every 2nd open (after app loads)
+        Toast.makeText(this, "App opened $openCount times", Toast.LENGTH_SHORT).show()
+
+        // Show interstitial on every 2nd open
         if (openCount % 2 == 0) {
-            // Delay slightly so app loads first, then show ad
             binding.root.postDelayed({
-                interstitialAd?.show(this) ?: loadInterstitialAd()
-            }, 1000) // 1 second delay
+                if (interstitialAd != null) {
+                    Toast.makeText(this, "Showing interstitial now!", Toast.LENGTH_SHORT).show()
+                    interstitialAd?.show(this)
+                } else {
+                    Toast.makeText(this, "Interstitial not ready!", Toast.LENGTH_SHORT).show()
+                    loadInterstitialAd()
+                }
+            }, 2000) // 2 seconds delay
         }
     }
 
@@ -161,7 +176,7 @@ class MainActivity : AppCompatActivity() {
                         Manifest.permission.READ_MEDIA_AUDIO
                     )
                 } else {
-                    // ✅ REQUEST BOTH READ AND WRITE FOR ANDROID 9
+                    // REQUEST BOTH READ AND WRITE FOR ANDROID 9
                     arrayOf(
                         Manifest.permission.READ_EXTERNAL_STORAGE,
                         Manifest.permission.WRITE_EXTERNAL_STORAGE

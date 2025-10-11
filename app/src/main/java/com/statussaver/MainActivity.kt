@@ -12,6 +12,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
@@ -34,7 +35,7 @@ class MainActivity : AppCompatActivity() {
     private val PERMISSION_REQUEST_CODE = 100
     private var bottomAdView: AdView? = null
     private var interstitialAd: InterstitialAd? = null
-    
+
     // SharedPreferences for app open counter
     private val prefs by lazy { getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
 
@@ -49,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         MobileAds.initialize(this)
         setupBottomBannerAd()
         loadInterstitialAd()
-        
+
         // Handle interstitial ad on app open (every 2nd open)
         handleAppOpenInterstitial()
 
@@ -76,10 +77,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupBottomBannerAd() {
         bottomAdView = AdView(this).apply {
-            adUnitId = "ca-app-pub-5419078989451944/4629093530" // Your Banner Ad ID
+            adUnitId = "ca-app-pub-3940256099942544/6300978111" // TEST BANNER AD
             setAdSize(AdSize.BANNER)
         }
 
+        // Add listener to debug ad loading
+        bottomAdView?.adListener = object : AdListener() {
+            override fun onAdLoaded() {
+                Toast.makeText(this@MainActivity, "Banner ad loaded!", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onAdFailedToLoad(error: LoadAdError) {
+                Toast.makeText(this@MainActivity, "Banner failed: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        binding.adContainer.removeAllViews()
         binding.adContainer.addView(bottomAdView)
 
         val adRequest = AdRequest.Builder().build()
@@ -90,15 +103,17 @@ class MainActivity : AppCompatActivity() {
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(
             this,
-            "ca-app-pub-5419078989451944/4796614493", // Your Interstitial Ad ID
+            "ca-app-pub-3940256099942544/1033173712", // TEST INTERSTITIAL AD
             adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
                     interstitialAd = ad
+                    Toast.makeText(this@MainActivity, "Interstitial loaded!", Toast.LENGTH_SHORT).show()
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     interstitialAd = null
+                    Toast.makeText(this@MainActivity, "Interstitial failed: ${error.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         )
@@ -126,8 +141,10 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         } else {
-            // Android 12 and below
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            // Android 12 and below - CHECK BOTH READ AND WRITE
+            val readPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            val writePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            readPermission && writePermission
         }
     }
 
@@ -144,7 +161,11 @@ class MainActivity : AppCompatActivity() {
                         Manifest.permission.READ_MEDIA_AUDIO
                     )
                 } else {
-                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    // ✅ REQUEST BOTH READ AND WRITE FOR ANDROID 9
+                    arrayOf(
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
                 }
                 ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
             }

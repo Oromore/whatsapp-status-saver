@@ -1,4 +1,5 @@
 package com.statussaver
+
 import android.content.Intent
 import android.content.Context
 import android.os.Bundle
@@ -10,7 +11,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdLoader
 import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.nativead.NativeAd
@@ -31,7 +35,8 @@ class MediaListActivity : AppCompatActivity() {
     private lateinit var adapter: MediaAdapter
     private var mediaType: String = "IMAGE"
     private var interstitialAd: InterstitialAd? = null
-    
+    private var bottomAdView: AdView? = null
+
     // Persistent save counter
     private val prefs by lazy { getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
 
@@ -45,11 +50,39 @@ class MediaListActivity : AppCompatActivity() {
 
         // Get media type from intent
         mediaType = intent.getStringExtra("MEDIA_TYPE") ?: "IMAGE"
-        
+
+        // Initialize AdMob
+        MobileAds.initialize(this)
+        setupBottomBannerAd()
+
         setupToolbar()
         setupRecyclerView()
         loadInterstitialAd()
         loadMedia()
+    }
+
+    private fun setupBottomBannerAd() {
+        bottomAdView = AdView(this).apply {
+            adUnitId = "ca-app-pub-3940256099942544/6300978111" // TEST BANNER AD
+            setAdSize(AdSize.BANNER)
+        }
+
+        // Add listener to debug ad loading
+        bottomAdView?.adListener = object : AdListener() {
+            override fun onAdLoaded() {
+                Toast.makeText(this@MediaListActivity, "Banner loaded!", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onAdFailedToLoad(error: LoadAdError) {
+                Toast.makeText(this@MediaListActivity, "Banner failed: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        binding.adContainer.removeAllViews()
+        binding.adContainer.addView(bottomAdView)
+
+        val adRequest = AdRequest.Builder().build()
+        bottomAdView?.loadAd(adRequest)
     }
 
     private fun setupToolbar() {
@@ -72,7 +105,7 @@ class MediaListActivity : AppCompatActivity() {
                 openMediaViewer(item)
             }
         )
-        
+
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(this@MediaListActivity)
             adapter = this@MediaListActivity.adapter
@@ -91,14 +124,14 @@ class MediaListActivity : AppCompatActivity() {
 
                 withContext(Dispatchers.Main) {
                     binding.progressBar.visibility = View.GONE
-                    
+
                     if (mediaList.isNotEmpty()) {
                         binding.recyclerView.visibility = View.VISIBLE
-                        
-                        // Insert native ads every 3 items
+
+                        // Insert native ads every 4 items
                         val itemsWithAds = insertNativeAds(mediaList)
                         adapter.submitList(itemsWithAds)
-                        
+
                         // Load native ads
                         loadNativeAds()
                     } else {
@@ -119,22 +152,22 @@ class MediaListActivity : AppCompatActivity() {
     private fun insertNativeAds(mediaList: List<MediaItem>): List<Any> {
         val itemsWithAds = mutableListOf<Any>()
         var adPosition = 0
-        
+
         mediaList.forEachIndexed { index, item ->
             itemsWithAds.add(item)
-            
+
             // Insert ad after every 4 items
             if ((index + 1) % 4 == 0 && index < mediaList.size - 1) {
                 itemsWithAds.add(NativeAdPlaceholder(adPosition))
                 adPosition++
             }
         }
-        
+
         return itemsWithAds
     }
 
     private fun loadNativeAds() {
-        val adLoader = AdLoader.Builder(this, "ca-app-pub-5419078989451944/1000290974")
+        val adLoader = AdLoader.Builder(this, "ca-app-pub-3940256099942544/2247696110") // TEST NATIVE AD
             .forNativeAd { nativeAd ->
                 adapter.addNativeAd(nativeAd)
             }
@@ -156,7 +189,7 @@ class MediaListActivity : AppCompatActivity() {
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(
             this,
-            "ca-app-pub-5419078989451944/4796614493", // Your Interstitial Ad ID
+            "ca-app-pub-3940256099942544/1033173712", // TEST INTERSTITIAL AD
             adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
@@ -173,15 +206,15 @@ class MediaListActivity : AppCompatActivity() {
     private fun saveMedia(item: MediaItem) {
         CoroutineScope(Dispatchers.IO).launch {
             val success = fileSaver.saveToDownloads(item)
-            
+
             withContext(Dispatchers.Main) {
                 if (success) {
-                    Toast.makeText(this@MediaListActivity, "Saved!", Toast.LENGTH_SHORT).show()
-                    
+                    Toast.makeText(this@MediaListActivity, "Saved to Downloads/WhatsAppStatus!", Toast.LENGTH_LONG).show()
+
                     // Increment persistent save counter
                     incrementSaveCounter()
                 } else {
-                    Toast.makeText(this@MediaListActivity, "Failed to save", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MediaListActivity, "Failed to save - check logcat", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -217,8 +250,19 @@ class MediaListActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        bottomAdView?.resume()
+    }
+
+    override fun onPause() {
+        bottomAdView?.pause()
+        super.onPause()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        bottomAdView?.destroy()
         adapter.destroyNativeAds()
     }
 }

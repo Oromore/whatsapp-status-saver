@@ -18,8 +18,6 @@ import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.statussaver.core.MediaType
 import com.statussaver.core.StatusScanner
 import com.statussaver.databinding.ActivityMainBinding
@@ -34,10 +32,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var scanner: StatusScanner
     private val PERMISSION_REQUEST_CODE = 100
     private var bottomAdView: AdView? = null
-    private var interstitialAd: InterstitialAd? = null
-
-    // SharedPreferences for app open counter
-    private val prefs by lazy { getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,10 +43,6 @@ class MainActivity : AppCompatActivity() {
         // Initialize AdMob
         MobileAds.initialize(this)
         setupBottomBannerAd()
-        loadInterstitialAd()
-
-        // Handle interstitial ad on app open (every 2nd open)
-        handleAppOpenInterstitial()
 
         // Check permissions and load statuses
         if (checkPermissions()) {
@@ -106,47 +96,6 @@ class MainActivity : AppCompatActivity() {
 
         val adRequest = AdRequest.Builder().build()
         bottomAdView?.loadAd(adRequest)
-    }
-
-    private fun loadInterstitialAd() {
-        val adRequest = AdRequest.Builder().build()
-        InterstitialAd.load(
-            this,
-            "ca-app-pub-3940256099942544/1033173712", // TEST INTERSTITIAL AD
-            adRequest,
-            object : InterstitialAdLoadCallback() {
-                override fun onAdLoaded(ad: InterstitialAd) {
-                    interstitialAd = ad
-                    Toast.makeText(this@MainActivity, "Interstitial loaded!", Toast.LENGTH_SHORT).show()
-                }
-
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    interstitialAd = null
-                    Toast.makeText(this@MainActivity, "Interstitial failed: ${error.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        )
-    }
-
-    private fun handleAppOpenInterstitial() {
-        var openCount = prefs.getInt("app_open_count", 0)
-        openCount++
-        prefs.edit().putInt("app_open_count", openCount).apply()
-
-        Toast.makeText(this, "App opened $openCount times", Toast.LENGTH_SHORT).show()
-
-        // Show interstitial on every 2nd open
-        if (openCount % 2 == 0) {
-            binding.root.postDelayed({
-                if (interstitialAd != null) {
-                    Toast.makeText(this, "Showing interstitial now!", Toast.LENGTH_SHORT).show()
-                    interstitialAd?.show(this)
-                } else {
-                    Toast.makeText(this, "Interstitial not ready!", Toast.LENGTH_SHORT).show()
-                    loadInterstitialAd()
-                }
-            }, 2000) // 2 seconds delay
-        }
     }
 
     private fun checkPermissions(): Boolean {

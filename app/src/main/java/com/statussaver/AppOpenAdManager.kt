@@ -28,10 +28,8 @@ class AppOpenAdManager(private val application: Application) :
     private var loadTime: Long = 0
     private var currentActivity: Activity? = null
 
-    // Test App Open Ad ID - Replace with real ID after testing
-    private val adUnitId = "ca-app-pub-3940256099942544/9257395921" // TEST ID
-    
-    // Real ID (use after testing): ca-app-pub-5419078989451944/8224717447
+    // Real App Open Ad ID
+    private val adUnitId = "ca-app-pub-5419078989451944/8224717447"
 
     private val prefs by lazy { 
         application.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) 
@@ -82,19 +80,11 @@ class AppOpenAdManager(private val application: Application) :
                     Log.d(TAG, "App Open Ad loaded successfully")
                     appOpenAd = ad
                     loadTime = Date().time
-                    
-                    currentActivity?.let {
-                        Toast.makeText(it, "App Open Ad loaded!", Toast.LENGTH_SHORT).show()
-                    }
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     Log.e(TAG, "Failed to load App Open Ad: ${error.message}")
                     appOpenAd = null
-                    
-                    currentActivity?.let {
-                        Toast.makeText(it, "App Open Ad failed: ${error.message}", Toast.LENGTH_SHORT).show()
-                    }
                 }
             }
         )
@@ -117,7 +107,6 @@ class AppOpenAdManager(private val application: Application) :
         prefs.edit().putInt("app_open_count", openCount).apply()
 
         Log.d(TAG, "App opened $openCount times")
-        Toast.makeText(activity, "App opened $openCount times", Toast.LENGTH_SHORT).show()
 
         if (openCount % 2 != 0) {
             Log.d(TAG, "Not showing ad - wait for 2nd open")
@@ -126,7 +115,6 @@ class AppOpenAdManager(private val application: Application) :
 
         // Show the ad
         Log.d(TAG, "Showing App Open Ad now!")
-        Toast.makeText(activity, "Showing App Open Ad now!", Toast.LENGTH_SHORT).show()
 
         appOpenAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {

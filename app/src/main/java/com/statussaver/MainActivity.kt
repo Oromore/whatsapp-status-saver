@@ -67,14 +67,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupBottomBannerAd() {
         bottomAdView = AdView(this).apply {
-            adUnitId = "ca-app-pub-3940256099942544/6300978111" // TEST BANNER AD
+            adUnitId = "ca-app-pub-5419078989451944/4629093530" // Real Banner Ad
             setAdSize(AdSize.BANNER)
         }
 
         bottomAdView?.adListener = object : AdListener() {
             override fun onAdLoaded() {
-                Toast.makeText(this@MainActivity, "Banner ad loaded!", Toast.LENGTH_SHORT).show()
-                
                 // Refresh ad every 30 seconds
                 binding.root.postDelayed({
                     bottomAdView?.loadAd(AdRequest.Builder().build())
@@ -82,8 +80,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onAdFailedToLoad(error: LoadAdError) {
-                Toast.makeText(this@MainActivity, "Banner failed: ${error.message}", Toast.LENGTH_SHORT).show()
-                
                 // Retry after 30 seconds on failure
                 binding.root.postDelayed({
                     bottomAdView?.loadAd(AdRequest.Builder().build())

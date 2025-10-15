@@ -63,7 +63,7 @@ class MediaListActivity : AppCompatActivity() {
 
     private fun setupBottomBannerAd() {
         bottomAdView = AdView(this).apply {
-            adUnitId = "ca-app-pub-3940256099942544/6300978111" // TEST BANNER AD
+            adUnitId = "ca-app-pub-5419078989451944/4629093530" // Real Banner Ad
             setAdSize(AdSize.BANNER)
         }
 
@@ -172,7 +172,7 @@ class MediaListActivity : AppCompatActivity() {
     }
 
     private fun loadNativeAds() {
-        val adLoader = AdLoader.Builder(this, "ca-app-pub-3940256099942544/2247696110") // TEST NATIVE AD
+        val adLoader = AdLoader.Builder(this, "ca-app-pub-5419078989451944/1000290974") // Real Native Ad
             .forNativeAd { nativeAd ->
                 adapter.addNativeAd(nativeAd)
             }
@@ -194,7 +194,7 @@ class MediaListActivity : AppCompatActivity() {
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(
             this,
-            "ca-app-pub-3940256099942544/1033173712", // TEST INTERSTITIAL AD
+            "ca-app-pub-5419078989451944/4796614493", // Real Interstitial Ad
             adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
@@ -230,8 +230,6 @@ class MediaListActivity : AppCompatActivity() {
         saveCount++
         prefs.edit().putInt("save_count", saveCount).apply()
 
-        Toast.makeText(this, "Saved $saveCount/7 - Interstitial at 7", Toast.LENGTH_SHORT).show()
-
         // Show interstitial after every 7 saves
         if (saveCount >= 7) {
             showInterstitialAd()
@@ -241,12 +239,10 @@ class MediaListActivity : AppCompatActivity() {
 
     private fun showInterstitialAd() {
         if (interstitialAd != null) {
-            Toast.makeText(this, "Showing interstitial ad!", Toast.LENGTH_SHORT).show()
             interstitialAd?.show(this)
             // Reload for next time
             loadInterstitialAd()
         } else {
-            Toast.makeText(this, "Interstitial not ready, loading...", Toast.LENGTH_SHORT).show()
             loadInterstitialAd()
         }
     }

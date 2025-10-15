@@ -230,10 +230,10 @@ class MediaListActivity : AppCompatActivity() {
         saveCount++
         prefs.edit().putInt("save_count", saveCount).apply()
 
-        Toast.makeText(this, "Saved $saveCount/10 - Interstitial at 10", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Saved $saveCount/7 - Interstitial at 7", Toast.LENGTH_SHORT).show()
 
-        // Show interstitial after every 10 saves
-        if (saveCount >= 10) {
+        // Show interstitial after every 7 saves
+        if (saveCount >= 7) {
             showInterstitialAd()
             prefs.edit().putInt("save_count", 0).apply() // Reset counter
         }

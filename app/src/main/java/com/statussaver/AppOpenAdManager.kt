@@ -119,8 +119,8 @@ class AppOpenAdManager(private val application: Application) :
         Log.d(TAG, "App opened $openCount times")
         Toast.makeText(activity, "App opened $openCount times", Toast.LENGTH_SHORT).show()
 
-        if (openCount % 3 != 0) {
-            Log.d(TAG, "Not showing ad - wait for 3rd open")
+        if (openCount % 2 != 0) {
+            Log.d(TAG, "Not showing ad - wait for 2nd open")
             return
         }
 

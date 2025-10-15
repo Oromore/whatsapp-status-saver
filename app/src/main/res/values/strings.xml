@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Status Saver</string>
-    
+    <string name="app_name">WhatsApp Status Saver</string>
+
     <!-- Main Activity -->
     <string name="main_title">WhatsApp Status Saver</string>
     <string name="main_subtitle">Save images, videos, and audio from WhatsApp status</string>
@@ -12,20 +12,20 @@
     <string name="permission_required">Storage Permission Required</string>
     <string name="permission_message">This app needs storage permission to access WhatsApp statuses</string>
     <string name="grant_permission">Grant Permission</string>
-    
+
     <!-- Media List Activity -->
     <string name="no_items">No %s found</string>
     <string name="items_count">%d items</string>
     <string name="select_all">Select All</string>
     <string name="save_selected">Save Selected</string>
-    
+
     <!-- Media Viewer Activity -->
     <string name="save">Save</string>
     <string name="saved">Saved!</string>
     <string name="already_saved">Already Saved</string>
     <string name="save_failed">Save Failed</string>
     <string name="saving">Saving...</string>
-    
+
     <!-- General -->
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>

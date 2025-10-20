@@ -39,6 +39,12 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "WhatsApp-Status-Saver-${variant.versionName}.apk"
+        }
+    }
 }
 
 dependencies {
@@ -48,7 +54,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
-    // Lifecycle for App Open Ad
+    // Lifecycle for App lifecycle awareness
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
 
@@ -58,8 +64,8 @@ dependencies {
     // Glide for image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
-    // Google AdMob - Latest version for privacy compliance
-    implementation("com.google.android.gms:play-services-ads:23.6.0")
+    // Unity Ads
+    implementation("com.unity3d.ads:unity-ads:4.9.2")
 
     // Coroutines for async operations
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

@@ -12,13 +12,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.MobileAds
-import com.statussaver.core.MediaType
 import com.statussaver.core.StatusScanner
 import com.statussaver.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
@@ -31,7 +24,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var scanner: StatusScanner
     private val PERMISSION_REQUEST_CODE = 100
-    private var bottomAdView: AdView? = null
+    
+    private lateinit var bannerAdManager: BannerAdManager
+    private lateinit var interstitialAdManager: InterstitialAdManager
+    private lateinit var rewardedVideoManager: RewardedVideoManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,9 +36,13 @@ class MainActivity : AppCompatActivity() {
 
         scanner = StatusScanner(this)
 
-        // Initialize AdMob
-        MobileAds.initialize(this)
-        setupBottomBannerAd()
+        // Initialize ad managers
+        bannerAdManager = BannerAdManager(this)
+        interstitialAdManager = InterstitialAdManager(this)
+        rewardedVideoManager = RewardedVideoManager(this)
+
+        // Load banner ad
+        bannerAdManager.loadBanner(binding.adContainer)
 
         // Check permissions and load statuses
         if (checkPermissions()) {
@@ -53,45 +53,19 @@ class MainActivity : AppCompatActivity() {
 
         // Set up click listeners
         binding.btnImages.setOnClickListener {
+            interstitialAdManager.trackAppInteraction(this)
             openMediaList("IMAGE")
         }
 
         binding.btnVideos.setOnClickListener {
+            interstitialAdManager.trackAppInteraction(this)
             openMediaList("VIDEO")
         }
 
         binding.btnAudio.setOnClickListener {
+            interstitialAdManager.trackAppInteraction(this)
             openMediaList("AUDIO")
         }
-    }
-
-    private fun setupBottomBannerAd() {
-        bottomAdView = AdView(this).apply {
-            adUnitId = "ca-app-pub-5419078989451944/4629093530" // Real Banner Ad
-            setAdSize(AdSize.BANNER)
-        }
-
-        bottomAdView?.adListener = object : AdListener() {
-            override fun onAdLoaded() {
-                // Refresh ad every 30 seconds
-                binding.root.postDelayed({
-                    bottomAdView?.loadAd(AdRequest.Builder().build())
-                }, 30000)
-            }
-
-            override fun onAdFailedToLoad(error: LoadAdError) {
-                // Retry after 30 seconds on failure
-                binding.root.postDelayed({
-                    bottomAdView?.loadAd(AdRequest.Builder().build())
-                }, 30000)
-            }
-        }
-
-        binding.adContainer.removeAllViews()
-        binding.adContainer.addView(bottomAdView)
-
-        val adRequest = AdRequest.Builder().build()
-        bottomAdView?.loadAd(adRequest)
     }
 
     private fun checkPermissions(): Boolean {
@@ -109,7 +83,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestPermissions() {
-        // Show explanation dialog first
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.permission_required))
             .setMessage(getString(R.string.permission_message))
@@ -121,7 +94,6 @@ class MainActivity : AppCompatActivity() {
                         Manifest.permission.READ_MEDIA_AUDIO
                     )
                 } else {
-                    // REQUEST BOTH READ AND WRITE FOR ANDROID 9
                     arrayOf(
                         Manifest.permission.READ_EXTERNAL_STORAGE,
                         Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -153,10 +125,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadStatuses() {
-        // Show loading
         binding.statusCount.text = getString(R.string.loading)
 
-        // Load statuses in background
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val mediaMap = scanner.scanAllStatus()
@@ -204,7 +174,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        bottomAdView?.resume()
+        bannerAdManager.loadBanner(binding.adContainer)
         // Refresh counts when returning to this screen
         if (checkPermissions()) {
             loadStatuses()
@@ -212,12 +182,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
-        bottomAdView?.pause()
         super.onPause()
     }
 
     override fun onDestroy() {
-        bottomAdView?.destroy()
+        bannerAdManager.destroyBanner()
         super.onDestroy()
     }
 }

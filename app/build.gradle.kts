@@ -41,12 +41,11 @@ android {
     }
 }
 
-// Custom APK naming - Gradle 8.0 compatible
+// Custom APK naming - Gradle 8.0+ compatible
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
-            (output as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
-                "WhatsApp-Status-Saver-${variant.name}-1.0.apk"
+            output.outputFileName.set("WhatsApp-Status-Saver-${variant.name}-1.0.apk")
         }
     }
 }

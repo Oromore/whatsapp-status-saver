@@ -46,7 +46,7 @@ androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
             (output as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
-                "WhatsApp-Status-Saver-${variant.name}-${defaultConfig.versionName}.apk"
+                "WhatsApp-Status-Saver-${variant.name}-1.0.apk"
         }
     }
 }

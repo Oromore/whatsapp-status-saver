@@ -39,38 +39,42 @@ android {
     buildFeatures {
         viewBinding = true
     }
+}
 
-    applicationVariants.all { variant ->
-        variant.outputs.all {
-            outputFileName = "WhatsApp-Status-Saver-${variant.versionName}.apk"
+// Custom APK naming - Gradle 8.0 compatible
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            (output as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+                "WhatsApp-Status-Saver-${variant.name}-${defaultConfig.versionName}.apk"
         }
     }
 }
 
 dependencies {
-    // AndroidX Core
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    // AndroidX Core - Latest
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
 
-    // Lifecycle for App lifecycle awareness
+    // Lifecycle - Latest
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
 
-    // RecyclerView for lists
+    // RecyclerView - Latest
     implementation("androidx.recyclerview:recyclerview:1.3.2")
 
-    // Glide for image loading
+    // Glide for image loading - Latest
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
-    // Unity Ads
-    implementation("com.unity3d.ads:unity-ads:4.9.2")
+    // Unity Ads - Latest
+    implementation("com.unity3d.ads:unity-ads:4.12.2")
 
-    // Coroutines for async operations
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    // Coroutines - Latest
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
-    // ExoPlayer for video playback
-    implementation("androidx.media3:media3-exoplayer:1.2.0")
-    implementation("androidx.media3:media3-ui:1.2.0")
+    // ExoPlayer - Latest
+    implementation("androidx.media3:media3-exoplayer:1.5.0")
+    implementation("androidx.media3:media3-ui:1.5.0")
 }

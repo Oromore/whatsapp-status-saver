@@ -41,15 +41,6 @@ android {
     }
 }
 
-// Custom APK naming - Gradle 8.0+ compatible
-androidComponents {
-    onVariants { variant ->
-        variant.outputs.forEach { output ->
-            output.outputFileName.set("WhatsApp-Status-Saver-${variant.name}-1.0.apk")
-        }
-    }
-}
-
 dependencies {
     // AndroidX Core - Latest
     implementation("androidx.core:core-ktx:1.15.0")

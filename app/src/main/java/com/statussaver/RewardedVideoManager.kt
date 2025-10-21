@@ -1,7 +1,6 @@
 package com.statussaver
 
 import android.app.Activity
-import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import com.unity3d.ads.IUnityAdsLoadListener
@@ -13,7 +12,7 @@ import com.unity3d.ads.UnityAds
  * 90-minute ad-free period after watch
  * 30-hour cooldown before next reward can be earned
  */
-class RewardedVideoManager(private val context: Context) {
+class RewardedVideoManager(private val activity: Activity) {
 
     companion object {
         private const val TAG = "RewardedVideoManager"
@@ -24,25 +23,40 @@ class RewardedVideoManager(private val context: Context) {
         private const val AD_FREE_DURATION_MINUTES = 90L
     }
 
-    private val unityAdsManager = UnityAdsManager(context)
-    private val prefs = context.getSharedPreferences("ad_prefs", Context.MODE_PRIVATE)
+    private val prefs = activity.getSharedPreferences("ad_prefs", Activity.MODE_PRIVATE)
     private var isAdLoaded = false
+    private var isLoadingAd = false
 
     init {
-        // Preload the rewarded video ad
-        loadRewardedVideo()
+        // Load rewarded video when Unity Ads is ready
+        if (UnityAdsManager.isReady()) {
+            loadRewardedVideo()
+        }
     }
 
     private fun loadRewardedVideo() {
+        if (!UnityAdsManager.isReady() || isLoadingAd) {
+            return
+        }
+
+        isLoadingAd = true
+        Log.d(TAG, "Loading rewarded video ad")
+
         UnityAds.load(REWARDED_AD_UNIT_ID, object : IUnityAdsLoadListener {
             override fun onUnityAdsAdLoaded(placementId: String) {
                 Log.d(TAG, "Rewarded video loaded: $placementId")
                 isAdLoaded = true
+                isLoadingAd = false
             }
 
-            override fun onUnityAdsFailedToLoad(placementId: String, error: UnityAds.UnityAdsLoadError, message: String) {
+            override fun onUnityAdsFailedToLoad(
+                placementId: String,
+                error: UnityAds.UnityAdsLoadError,
+                message: String
+            ) {
                 Log.e(TAG, "Rewarded video failed to load: $error - $message")
                 isAdLoaded = false
+                isLoadingAd = false
             }
         })
     }
@@ -76,12 +90,19 @@ class RewardedVideoManager(private val context: Context) {
     /**
      * Show rewarded video ad
      */
-    fun showRewardedVideo(activity: Activity) {
+    fun showRewardedVideo() {
+        // Pre-flight checks
+        if (!UnityAdsManager.isReady()) {
+            Toast.makeText(activity, "Ads not ready yet, please try again", Toast.LENGTH_SHORT).show()
+            Log.d(TAG, "Unity Ads not ready yet")
+            return
+        }
+
         if (!canWatchReward()) {
             val minutesLeft = getMinutesUntilNextReward()
             val hoursLeft = minutesLeft / 60
             Toast.makeText(
-                context,
+                activity,
                 "Reward available in $hoursLeft hours ${minutesLeft % 60} minutes",
                 Toast.LENGTH_SHORT
             ).show()
@@ -90,22 +111,28 @@ class RewardedVideoManager(private val context: Context) {
         }
 
         if (!isAdLoaded) {
-            Toast.makeText(context, "Rewarded video not ready, loading...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(activity, "Rewarded video not ready, loading...", Toast.LENGTH_SHORT).show()
             Log.d(TAG, "Rewarded video ad not loaded yet")
-            loadRewardedVideo() // Try loading again
+            if (!isLoadingAd) {
+                loadRewardedVideo() // Try loading
+            }
             return
         }
 
+        // All checks passed - show the ad
         Log.d(TAG, "Showing rewarded video ad")
-        Toast.makeText(context, "Loading rewarded video...", Toast.LENGTH_SHORT).show()
 
         UnityAds.show(
             activity,
             REWARDED_AD_UNIT_ID,
             object : IUnityAdsShowListener {
-                override fun onUnityAdsShowFailure(placementId: String, error: UnityAds.UnityAdsShowError, message: String) {
+                override fun onUnityAdsShowFailure(
+                    placementId: String,
+                    error: UnityAds.UnityAdsShowError,
+                    message: String
+                ) {
                     Log.e(TAG, "Rewarded video show failed: $error - $message")
-                    Toast.makeText(context, "Failed to load video", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(activity, "Failed to load video", Toast.LENGTH_SHORT).show()
                     isAdLoaded = false
                     loadRewardedVideo() // Reload for next time
                 }
@@ -118,7 +145,10 @@ class RewardedVideoManager(private val context: Context) {
                     Log.d(TAG, "Rewarded video clicked")
                 }
 
-                override fun onUnityAdsShowComplete(placementId: String, state: UnityAds.UnityAdsShowCompletionState) {
+                override fun onUnityAdsShowComplete(
+                    placementId: String,
+                    state: UnityAds.UnityAdsShowCompletionState
+                ) {
                     Log.d(TAG, "Rewarded video completed: $state")
 
                     // Check if video was watched completely
@@ -126,7 +156,11 @@ class RewardedVideoManager(private val context: Context) {
                         rewardUser()
                     } else {
                         Log.d(TAG, "Video skipped - no reward")
-                        Toast.makeText(context, "Please watch the full video to get ad-free time", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            activity,
+                            "Please watch the full video to get ad-free time",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
 
                     // Reload ad for next time
@@ -139,14 +173,14 @@ class RewardedVideoManager(private val context: Context) {
 
     private fun rewardUser() {
         // Activate ad-free period (90 minutes)
-        unityAdsManager.activateAdFree(context, AD_FREE_DURATION_MINUTES)
+        UnityAdsManager.activateAdFree(AD_FREE_DURATION_MINUTES)
 
         // Set cooldown for next reward
         prefs.edit().putLong(LAST_REWARD_TIME_KEY, System.currentTimeMillis()).apply()
 
         Log.d(TAG, "User rewarded: $AD_FREE_DURATION_MINUTES minutes ad-free")
         Toast.makeText(
-            context,
+            activity,
             "Enjoy $AD_FREE_DURATION_MINUTES minutes without ads!",
             Toast.LENGTH_LONG
         ).show()
@@ -156,6 +190,6 @@ class RewardedVideoManager(private val context: Context) {
      * Get time remaining in current ad-free period (in seconds)
      */
     fun getAdFreeTimeRemaining(): Long {
-        return unityAdsManager.getTimeUntilAdFreeEnds(context)
+        return UnityAdsManager.getTimeUntilAdFreeEnds()
     }
 }

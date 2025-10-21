@@ -1,18 +1,17 @@
 package com.statussaver
 
 import android.app.Activity
-import android.content.Context
 import android.util.Log
 import com.unity3d.ads.IUnityAdsLoadListener
 import com.unity3d.ads.IUnityAdsShowListener
 import com.unity3d.ads.UnityAds
 
 /**
- * Manages both interstitial ad triggers using Unity Ads 4.x API:
+ * Manages interstitial ad triggers using Unity Ads 4.x API:
  * 1. After 7 status saves
  * 2. After user interaction with app (10-minute cooldown)
  */
-class InterstitialAdManager(private val context: Context) {
+class InterstitialAdManager(private val activity: Activity) {
 
     companion object {
         private const val TAG = "InterstitialAdManager"
@@ -23,25 +22,40 @@ class InterstitialAdManager(private val context: Context) {
         private const val COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000L
     }
 
-    private val unityAdsManager = UnityAdsManager(context)
-    private val prefs = context.getSharedPreferences("ad_prefs", Context.MODE_PRIVATE)
+    private val prefs = activity.getSharedPreferences("ad_prefs", Activity.MODE_PRIVATE)
     private var isAdLoaded = false
+    private var isLoadingAd = false
 
     init {
-        // Preload the interstitial ad
-        loadInterstitial()
+        // Load interstitial ad when Unity Ads is ready
+        if (UnityAdsManager.isReady()) {
+            loadInterstitial()
+        }
     }
 
     private fun loadInterstitial() {
+        if (!UnityAdsManager.isReady() || isLoadingAd) {
+            return
+        }
+
+        isLoadingAd = true
+        Log.d(TAG, "Loading interstitial ad")
+
         UnityAds.load(INTERSTITIAL_AD_UNIT_ID, object : IUnityAdsLoadListener {
             override fun onUnityAdsAdLoaded(placementId: String) {
                 Log.d(TAG, "Interstitial loaded: $placementId")
                 isAdLoaded = true
+                isLoadingAd = false
             }
 
-            override fun onUnityAdsFailedToLoad(placementId: String, error: UnityAds.UnityAdsLoadError, message: String) {
+            override fun onUnityAdsFailedToLoad(
+                placementId: String,
+                error: UnityAds.UnityAdsLoadError,
+                message: String
+            ) {
                 Log.e(TAG, "Interstitial failed to load: $error - $message")
                 isAdLoaded = false
+                isLoadingAd = false
             }
         })
     }
@@ -49,8 +63,13 @@ class InterstitialAdManager(private val context: Context) {
     /**
      * Track a status save and show interstitial if threshold reached
      */
-    fun trackSave(activity: Activity) {
-        if (unityAdsManager.isAdFree(context)) {
+    fun trackSave() {
+        if (!UnityAdsManager.isReady()) {
+            Log.d(TAG, "Unity Ads not ready - skipping save tracking")
+            return
+        }
+
+        if (UnityAdsManager.isAdFree()) {
             Log.d(TAG, "Ad-free period active - skipping save interstitial")
             return
         }
@@ -63,16 +82,21 @@ class InterstitialAdManager(private val context: Context) {
 
         // Show interstitial every 7 saves
         if (saveCount >= 7) {
-            showInterstitial(activity)
+            showInterstitial()
             prefs.edit().putInt(SAVE_COUNT_KEY, 0).apply() // Reset counter
         }
     }
 
     /**
-     * Show interstitial after user first interaction with app
+     * Show interstitial after user interaction with app
      */
-    fun trackAppInteraction(activity: Activity) {
-        if (unityAdsManager.isAdFree(context)) {
+    fun trackAppInteraction() {
+        if (!UnityAdsManager.isReady()) {
+            Log.d(TAG, "Unity Ads not ready - skipping app interaction tracking")
+            return
+        }
+
+        if (UnityAdsManager.isAdFree()) {
             Log.d(TAG, "Ad-free period active - skipping app open interstitial")
             return
         }
@@ -88,23 +112,29 @@ class InterstitialAdManager(private val context: Context) {
             return
         }
 
-        showInterstitial(activity)
+        showInterstitial()
     }
 
-    private fun showInterstitial(activity: Activity) {
+    private fun showInterstitial() {
         if (!isAdLoaded) {
             Log.d(TAG, "Interstitial ad not loaded yet")
-            loadInterstitial() // Try loading again
+            if (!isLoadingAd) {
+                loadInterstitial() // Try loading
+            }
             return
         }
 
         Log.d(TAG, "Showing interstitial ad")
-        
+
         UnityAds.show(
             activity,
             INTERSTITIAL_AD_UNIT_ID,
             object : IUnityAdsShowListener {
-                override fun onUnityAdsShowFailure(placementId: String, error: UnityAds.UnityAdsShowError, message: String) {
+                override fun onUnityAdsShowFailure(
+                    placementId: String,
+                    error: UnityAds.UnityAdsShowError,
+                    message: String
+                ) {
                     Log.e(TAG, "Interstitial show failed: $error - $message")
                     isAdLoaded = false
                     loadInterstitial() // Reload for next time
@@ -118,12 +148,17 @@ class InterstitialAdManager(private val context: Context) {
                     Log.d(TAG, "Interstitial clicked")
                 }
 
-                override fun onUnityAdsShowComplete(placementId: String, state: UnityAds.UnityAdsShowCompletionState) {
+                override fun onUnityAdsShowComplete(
+                    placementId: String,
+                    state: UnityAds.UnityAdsShowCompletionState
+                ) {
                     Log.d(TAG, "Interstitial show completed: $state")
-                    
+
                     // Update last show time
-                    prefs.edit().putLong(LAST_INTERSTITIAL_TIME_KEY, System.currentTimeMillis()).apply()
-                    
+                    prefs.edit()
+                        .putLong(LAST_INTERSTITIAL_TIME_KEY, System.currentTimeMillis())
+                        .apply()
+
                     // Reload ad for next time
                     isAdLoaded = false
                     loadInterstitial()

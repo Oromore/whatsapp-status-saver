@@ -8,7 +8,7 @@ import com.unity3d.ads.UnityAds
 
 /**
  * Manages interstitial ad triggers using Unity Ads 4.x API:
- * 1. After 7 status saves
+ * 1. After 7 status saves (no cooldown)
  * 2. After user interaction with app (10-minute cooldown)
  */
 class InterstitialAdManager(private val activity: Activity) {
@@ -17,7 +17,7 @@ class InterstitialAdManager(private val activity: Activity) {
         private const val TAG = "InterstitialAdManager"
         private const val INTERSTITIAL_AD_UNIT_ID = "Interstitial_Android"
         private const val SAVE_COUNT_KEY = "interstitial_save_count"
-        private const val LAST_INTERSTITIAL_TIME_KEY = "last_interstitial_time"
+        private const val LAST_APP_INTERACTION_AD_KEY = "last_app_interaction_ad_time"
         private const val COOLDOWN_MINUTES = 10
         private const val COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000L
     }
@@ -62,6 +62,7 @@ class InterstitialAdManager(private val activity: Activity) {
 
     /**
      * Track a status save and show interstitial if threshold reached
+     * No cooldown - shows every 7 saves
      */
     fun trackSave() {
         if (!UnityAdsManager.isReady()) {
@@ -82,13 +83,14 @@ class InterstitialAdManager(private val activity: Activity) {
 
         // Show interstitial every 7 saves
         if (saveCount >= 7) {
-            showInterstitial()
+            showInterstitial(updateCooldown = false)
             prefs.edit().putInt(SAVE_COUNT_KEY, 0).apply() // Reset counter
         }
     }
 
     /**
      * Show interstitial after user interaction with app
+     * Has 10-minute cooldown
      */
     fun trackAppInteraction() {
         if (!UnityAdsManager.isReady()) {
@@ -97,25 +99,25 @@ class InterstitialAdManager(private val activity: Activity) {
         }
 
         if (UnityAdsManager.isAdFree()) {
-            Log.d(TAG, "Ad-free period active - skipping app open interstitial")
+            Log.d(TAG, "Ad-free period active - skipping app interaction interstitial")
             return
         }
 
         // Check if 10-minute cooldown has passed
-        val lastInterstitialTime = prefs.getLong(LAST_INTERSTITIAL_TIME_KEY, 0)
+        val lastInterstitialTime = prefs.getLong(LAST_APP_INTERACTION_AD_KEY, 0)
         val currentTime = System.currentTimeMillis()
         val timeSinceLastAd = currentTime - lastInterstitialTime
 
         if (timeSinceLastAd < COOLDOWN_MS) {
             val minutesUntilNextAd = ((COOLDOWN_MS - timeSinceLastAd) / 1000 / 60).toInt()
-            Log.d(TAG, "App open interstitial on cooldown - $minutesUntilNextAd minutes remaining")
+            Log.d(TAG, "App interaction interstitial on cooldown - $minutesUntilNextAd minutes remaining")
             return
         }
 
-        showInterstitial()
+        showInterstitial(updateCooldown = true)
     }
 
-    private fun showInterstitial() {
+    private fun showInterstitial(updateCooldown: Boolean) {
         if (!isAdLoaded) {
             Log.d(TAG, "Interstitial ad not loaded yet")
             if (!isLoadingAd) {
@@ -124,7 +126,7 @@ class InterstitialAdManager(private val activity: Activity) {
             return
         }
 
-        Log.d(TAG, "Showing interstitial ad")
+        Log.d(TAG, "Showing interstitial ad (updateCooldown: $updateCooldown)")
 
         UnityAds.show(
             activity,
@@ -154,10 +156,13 @@ class InterstitialAdManager(private val activity: Activity) {
                 ) {
                     Log.d(TAG, "Interstitial show completed: $state")
 
-                    // Update last show time
-                    prefs.edit()
-                        .putLong(LAST_INTERSTITIAL_TIME_KEY, System.currentTimeMillis())
-                        .apply()
+                    // Only update cooldown timestamp for app interaction ads
+                    if (updateCooldown) {
+                        prefs.edit()
+                            .putLong(LAST_APP_INTERACTION_AD_KEY, System.currentTimeMillis())
+                            .apply()
+                        Log.d(TAG, "App interaction cooldown timestamp updated")
+                    }
 
                     // Reload ad for next time
                     isAdLoaded = false

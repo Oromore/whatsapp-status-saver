@@ -3,148 +3,86 @@ package com.statussaver
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.android.gms.ads.nativead.NativeAd
 import com.statussaver.core.MediaItem
 import com.statussaver.core.MediaType
-import com.statussaver.core.getFormattedSize
-import com.statussaver.databinding.ItemMediaBinding
-import com.statussaver.databinding.ItemNativeAdBinding
+import java.text.SimpleDateFormat
+import java.util.*
 
+/**
+ * Adapter for displaying media items (images, videos, audio)
+ * Clean version - no AdMob native ads
+ */
 class MediaAdapter(
     private val onSaveClick: (MediaItem) -> Unit,
     private val onItemClick: (MediaItem) -> Unit
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+) : ListAdapter<MediaItem, MediaAdapter.MediaViewHolder>(MediaDiffCallback()) {
 
-    private val items = mutableListOf<Any>()
-    private val nativeAds = mutableListOf<NativeAd>()
-    
-    companion object {
-        const val VIEW_TYPE_MEDIA = 0
-        const val VIEW_TYPE_AD = 1
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_media, parent, false)
+        return MediaViewHolder(view)
     }
 
-    fun submitList(newItems: List<Any>) {
-        items.clear()
-        items.addAll(newItems)
-        notifyDataSetChanged()
+    override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
+        val item = getItem(position)
+        holder.bind(item)
     }
 
-    fun addNativeAd(nativeAd: NativeAd) {
-        nativeAds.add(nativeAd)
-        // Find next placeholder and replace with ad
-        notifyDataSetChanged()
-    }
+    inner class MediaViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val thumbnail: ImageView = itemView.findViewById(R.id.thumbnail)
+        private val playIcon: ImageView = itemView.findViewById(R.id.playIcon)
+        private val fileName: TextView = itemView.findViewById(R.id.fileName)
+        private val fileSize: TextView = itemView.findViewById(R.id.fileSize)
+        private val fileDate: TextView = itemView.findViewById(R.id.fileDate)
+        private val saveButton: View = itemView.findViewById(R.id.saveButton)
 
-    fun getNativeAdCount(): Int {
-        return items.count { it is NativeAdPlaceholder }
-    }
-
-    fun destroyNativeAds() {
-        nativeAds.forEach { it.destroy() }
-        nativeAds.clear()
-    }
-
-    override fun getItemViewType(position: Int): Int {
-        return when (items[position]) {
-            is MediaItem -> VIEW_TYPE_MEDIA
-            is NativeAdPlaceholder -> VIEW_TYPE_AD
-            else -> VIEW_TYPE_MEDIA
-        }
-    }
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        return when (viewType) {
-            VIEW_TYPE_MEDIA -> {
-                val binding = ItemMediaBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-                MediaViewHolder(binding)
-            }
-            VIEW_TYPE_AD -> {
-                val binding = ItemNativeAdBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-                NativeAdViewHolder(binding)
-            }
-            else -> throw IllegalArgumentException("Invalid view type")
-        }
-    }
-
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        when (holder) {
-            is MediaViewHolder -> {
-                val item = items[position] as MediaItem
-                holder.bind(item)
-            }
-            is NativeAdViewHolder -> {
-                if (nativeAds.isNotEmpty()) {
-                    val ad = nativeAds.removeAt(0)
-                    holder.bind(ad)
-                }
-            }
-        }
-    }
-
-    override fun getItemCount(): Int = items.size
-
-    // Media ViewHolder
-    inner class MediaViewHolder(private val binding: ItemMediaBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MediaItem) {
-            binding.fileName.text = item.fileName
-            binding.fileSize.text = item.getFormattedSize()
-
             // Load thumbnail
-            Glide.with(binding.root.context)
+            Glide.with(itemView.context)
                 .load(item.path)
                 .centerCrop()
-                .into(binding.thumbnail)
+                .into(thumbnail)
 
             // Show play icon for videos
-            binding.playIcon.visibility = if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
+            playIcon.visibility = if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
 
-            // Save button click
-            binding.btnSave.setOnClickListener {
-                onSaveClick(item)
-            }
+            // Set file info
+            fileName.text = item.fileName
+            fileSize.text = formatFileSize(item.size)
+            fileDate.text = formatDate(item.dateModified)
 
-            // Card click
-            binding.cardView.setOnClickListener {
-                onItemClick(item)
+            // Click listeners
+            itemView.setOnClickListener { onItemClick(item) }
+            saveButton.setOnClickListener { onSaveClick(item) }
+        }
+
+        private fun formatFileSize(bytes: Long): String {
+            return when {
+                bytes < 1024 -> "$bytes B"
+                bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+                else -> "${bytes / (1024 * 1024)} MB"
             }
+        }
+
+        private fun formatDate(timestamp: Long): String {
+            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+            return sdf.format(Date(timestamp))
         }
     }
 
-    // Native Ad ViewHolder
-    inner class NativeAdViewHolder(private val binding: ItemNativeAdBinding) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(nativeAd: NativeAd) {
-            val adView = binding.nativeAdView
+    class MediaDiffCallback : DiffUtil.ItemCallback<MediaItem>() {
+        override fun areItemsTheSame(oldItem: MediaItem, newItem: MediaItem): Boolean {
+            return oldItem.path == newItem.path
+        }
 
-            // Set ad assets
-            adView.headlineView = binding.adHeadline
-            adView.bodyView = binding.adBody
-            adView.callToActionView = binding.adCallToAction
-            adView.iconView = binding.adIcon
-            adView.mediaView = binding.adMedia
-
-            // Populate ad views
-            binding.adHeadline.text = nativeAd.headline
-            binding.adBody.text = nativeAd.body
-            binding.adCallToAction.text = nativeAd.callToAction
-
-            nativeAd.icon?.let {
-                binding.adIcon.setImageDrawable(it.drawable)
-                binding.adIcon.visibility = View.VISIBLE
-            } ?: run {
-                binding.adIcon.visibility = View.GONE
-            }
-
-            nativeAd.mediaContent?.let {
-                binding.adMedia.setMediaContent(it)
-                binding.adMedia.visibility = View.VISIBLE
-            } ?: run {
-                binding.adMedia.visibility = View.GONE
-            }
-
-            // Register the native ad
-            adView.setNativeAd(nativeAd)
+        override fun areContentsTheSame(oldItem: MediaItem, newItem: MediaItem): Boolean {
+            return oldItem == newItem
         }
     }
 }

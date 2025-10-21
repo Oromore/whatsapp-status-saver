@@ -151,7 +151,3 @@ class MediaListActivity : AppCompatActivity() {
         bannerAdManager.destroyBanner()
     }
 }
-
-// Simple media item adapter - simplified version
-// Your existing MediaAdapter.kt should work as-is
-data class NativeAdPlaceholder(val position: Int)

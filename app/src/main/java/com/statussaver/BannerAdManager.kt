@@ -2,23 +2,26 @@ package com.statussaver
 
 import android.content.Context
 import android.util.Log
+import android.view.View
 import android.widget.FrameLayout
 import com.unity3d.ads.UnityAds
-import com.unity3d.ads.banner.BannerErrorInfo
-import com.unity3d.ads.banner.IBannerListener
+import com.unity3d.services.banners.BannerErrorInfo
+import com.unity3d.services.banners.BannerView
+import com.unity3d.services.banners.UnityBannerSize
 
 /**
- * Manages bottom banner ads
+ * Manages bottom banner ads using Unity Ads 4.x API
  * Unity handles refresh automatically via dashboard settings (20 seconds)
  * Hides during ad-free periods
  */
-class BannerAdManager(private val context: Context) : IBannerListener {
+class BannerAdManager(private val context: Context) : BannerView.IListener {
 
     companion object {
         private const val TAG = "BannerAdManager"
         private const val BANNER_AD_UNIT_ID = "Banner_Android"
     }
 
+    private var bannerView: BannerView? = null
     private var bannerContainer: FrameLayout? = null
     private val unityAdsManager = UnityAdsManager(context)
 
@@ -34,33 +37,42 @@ class BannerAdManager(private val context: Context) : IBannerListener {
 
         Log.d(TAG, "Loading banner ad")
         
-        UnityAds.setBannerListener(this)
-        UnityAds.loadBanner(context, BANNER_AD_UNIT_ID)
+        // Remove old banner if exists
+        bannerView?.destroy()
+        container.removeAllViews()
+
+        // Create new banner
+        bannerView = BannerView(context, BANNER_AD_UNIT_ID, UnityBannerSize(320, 50))
+        bannerView?.listener = this
+        
+        // Add to container
+        container.addView(bannerView)
+        
+        // Load the banner
+        bannerView?.load()
     }
 
     fun destroyBanner() {
+        bannerView?.destroy()
+        bannerView = null
         bannerContainer?.removeAllViews()
-        UnityAds.destroy(BANNER_AD_UNIT_ID)
     }
 
-    // IBannerListener callbacks
-    override fun onBannerLoaded(adUnitId: String?) {
-        Log.d(TAG, "Banner loaded: $adUnitId")
+    // BannerView.IListener callbacks
+    override fun onBannerLoaded(bannerAdView: BannerView?) {
+        Log.d(TAG, "Banner loaded")
+        bannerAdView?.visibility = View.VISIBLE
     }
 
-    override fun onBannerShown(adUnitId: String?) {
-        Log.d(TAG, "Banner shown: $adUnitId")
+    override fun onBannerClick(bannerAdView: BannerView?) {
+        Log.d(TAG, "Banner clicked")
     }
 
-    override fun onBannerClick(adUnitId: String?) {
-        Log.d(TAG, "Banner clicked: $adUnitId")
+    override fun onBannerFailedToLoad(bannerAdView: BannerView?, errorInfo: BannerErrorInfo?) {
+        Log.e(TAG, "Banner failed to load: ${errorInfo?.errorMessage}")
     }
 
-    override fun onBannerFailedToLoad(adUnitId: String?, error: BannerErrorInfo?) {
-        Log.e(TAG, "Banner failed to load: $adUnitId - ${error?.errorMessage}")
-    }
-
-    override fun onBannerLeftApplication(adUnitId: String?) {
-        Log.d(TAG, "Banner left application: $adUnitId")
+    override fun onBannerLeftApplication(bannerAdView: BannerView?) {
+        Log.d(TAG, "Banner left application")
     }
 }

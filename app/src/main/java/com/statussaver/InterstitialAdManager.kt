@@ -3,11 +3,12 @@ package com.statussaver
 import android.app.Activity
 import android.content.Context
 import android.util.Log
+import com.unity3d.ads.IUnityAdsLoadListener
 import com.unity3d.ads.IUnityAdsShowListener
 import com.unity3d.ads.UnityAds
 
 /**
- * Manages both interstitial ad triggers:
+ * Manages both interstitial ad triggers using Unity Ads 4.x API:
  * 1. After 7 status saves
  * 2. After user interaction with app (10-minute cooldown)
  */
@@ -24,6 +25,26 @@ class InterstitialAdManager(private val context: Context) {
 
     private val unityAdsManager = UnityAdsManager(context)
     private val prefs = context.getSharedPreferences("ad_prefs", Context.MODE_PRIVATE)
+    private var isAdLoaded = false
+
+    init {
+        // Preload the interstitial ad
+        loadInterstitial()
+    }
+
+    private fun loadInterstitial() {
+        UnityAds.load(INTERSTITIAL_AD_UNIT_ID, object : IUnityAdsLoadListener {
+            override fun onUnityAdsAdLoaded(placementId: String) {
+                Log.d(TAG, "Interstitial loaded: $placementId")
+                isAdLoaded = true
+            }
+
+            override fun onUnityAdsFailedToLoad(placementId: String, error: UnityAds.UnityAdsLoadError, message: String) {
+                Log.e(TAG, "Interstitial failed to load: $error - $message")
+                isAdLoaded = false
+            }
+        })
+    }
 
     /**
      * Track a status save and show interstitial if threshold reached
@@ -71,8 +92,9 @@ class InterstitialAdManager(private val context: Context) {
     }
 
     private fun showInterstitial(activity: Activity) {
-        if (!UnityAds.isReady(INTERSTITIAL_AD_UNIT_ID)) {
-            Log.d(TAG, "Interstitial ad not ready")
+        if (!isAdLoaded) {
+            Log.d(TAG, "Interstitial ad not loaded yet")
+            loadInterstitial() // Try loading again
             return
         }
 
@@ -82,23 +104,29 @@ class InterstitialAdManager(private val context: Context) {
             activity,
             INTERSTITIAL_AD_UNIT_ID,
             object : IUnityAdsShowListener {
-                override fun onUnityAdsShowFailure(adUnitId: String, error: UnityAds.UnityAdsShowError, message: String) {
+                override fun onUnityAdsShowFailure(placementId: String, error: UnityAds.UnityAdsShowError, message: String) {
                     Log.e(TAG, "Interstitial show failed: $error - $message")
+                    isAdLoaded = false
+                    loadInterstitial() // Reload for next time
                 }
 
-                override fun onUnityAdsShowStart(adUnitId: String) {
+                override fun onUnityAdsShowStart(placementId: String) {
                     Log.d(TAG, "Interstitial show started")
                 }
 
-                override fun onUnityAdsShowClick(adUnitId: String) {
+                override fun onUnityAdsShowClick(placementId: String) {
                     Log.d(TAG, "Interstitial clicked")
                 }
 
-                override fun onUnityAdsShowComplete(adUnitId: String, state: UnityAds.UnityAdsShowCompletionState) {
+                override fun onUnityAdsShowComplete(placementId: String, state: UnityAds.UnityAdsShowCompletionState) {
                     Log.d(TAG, "Interstitial show completed: $state")
                     
                     // Update last show time
                     prefs.edit().putLong(LAST_INTERSTITIAL_TIME_KEY, System.currentTimeMillis()).apply()
+                    
+                    // Reload ad for next time
+                    isAdLoaded = false
+                    loadInterstitial()
                 }
             }
         )

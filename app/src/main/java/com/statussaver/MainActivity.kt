@@ -53,17 +53,17 @@ class MainActivity : AppCompatActivity() {
 
         // Set up click listeners
         binding.btnImages.setOnClickListener {
-            interstitialAdManager.trackAppInteraction(this)
+            interstitialAdManager.trackAppInteraction()
             openMediaList("IMAGE")
         }
 
         binding.btnVideos.setOnClickListener {
-            interstitialAdManager.trackAppInteraction(this)
+            interstitialAdManager.trackAppInteraction()
             openMediaList("VIDEO")
         }
 
         binding.btnAudio.setOnClickListener {
-            interstitialAdManager.trackAppInteraction(this)
+            interstitialAdManager.trackAppInteraction()
             openMediaList("AUDIO")
         }
     }

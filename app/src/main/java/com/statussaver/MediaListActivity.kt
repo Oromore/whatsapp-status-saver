@@ -119,7 +119,7 @@ class MediaListActivity : AppCompatActivity() {
                     Toast.makeText(this@MediaListActivity, "Saved to Downloads/WhatsAppStatus!", Toast.LENGTH_LONG).show()
                     
                     // Track save for interstitial
-                    interstitialAdManager.trackSave(this@MediaListActivity)
+                    interstitialAdManager.trackSave()
                 } else {
                     Toast.makeText(this@MediaListActivity, "Failed to save", Toast.LENGTH_LONG).show()
                 }

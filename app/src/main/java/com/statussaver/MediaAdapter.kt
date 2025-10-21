@@ -39,8 +39,7 @@ class MediaAdapter(
         private val playIcon: ImageView = itemView.findViewById(R.id.playIcon)
         private val fileName: TextView = itemView.findViewById(R.id.fileName)
         private val fileSize: TextView = itemView.findViewById(R.id.fileSize)
-        private val fileDate: TextView = itemView.findViewById(R.id.fileDate)
-        private val saveButton: View = itemView.findViewById(R.id.saveButton)
+        private val saveButton: View = itemView.findViewById(R.id.btnSave)
 
         fun bind(item: MediaItem) {
             // Load thumbnail
@@ -55,7 +54,6 @@ class MediaAdapter(
             // Set file info
             fileName.text = item.fileName
             fileSize.text = formatFileSize(item.size)
-            fileDate.text = formatDate(item.dateModified)
 
             // Click listeners
             itemView.setOnClickListener { onItemClick(item) }
@@ -68,11 +66,6 @@ class MediaAdapter(
                 bytes < 1024 * 1024 -> "${bytes / 1024} KB"
                 else -> "${bytes / (1024 * 1024)} MB"
             }
-        }
-
-        private fun formatDate(timestamp: Long): String {
-            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-            return sdf.format(Date(timestamp))
         }
     }
 

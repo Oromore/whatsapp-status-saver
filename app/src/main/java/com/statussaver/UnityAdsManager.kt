@@ -8,20 +8,23 @@ import com.unity3d.ads.UnityAds
 
 /**
  * Main coordinator for all Unity Ads
+ * Game ID: 5966081 (Android)
  */
 class UnityAdsManager(private val context: Context) {
 
     companion object {
         private const val TAG = "UnityAdsManager"
         private const val GAME_ID = "5966081"
+        private const val TEST_MODE = false // Set to false for production
     }
 
     fun initialize() {
-        Log.d(TAG, "Initializing Unity Ads with Game ID: $GAME_ID")
-        
+        Log.d(TAG, "Initializing Unity Ads with Game ID: $GAME_ID (Test Mode: $TEST_MODE)")
+
         UnityAds.initialize(
             context,
             GAME_ID,
+            TEST_MODE,
             object : IUnityAdsInitializationListener {
                 override fun onInitializationComplete() {
                     Log.d(TAG, "Unity Ads initialized successfully")
@@ -52,7 +55,7 @@ class UnityAdsManager(private val context: Context) {
         val prefs = context.getSharedPreferences("ad_prefs", Context.MODE_PRIVATE)
         val adFreeExpiryTime = prefs.getLong("ad_free_expiry", 0)
         val currentTime = System.currentTimeMillis()
-        
+
         return if (currentTime < adFreeExpiryTime) {
             (adFreeExpiryTime - currentTime) / 1000 // Return in seconds
         } else {

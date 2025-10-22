@@ -35,16 +35,14 @@ android {
         }
     }
     
-    // Custom APK naming
+    // Custom APK naming - clean filename without build type
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = defaultConfig.versionName
-            val versionCode = defaultConfig.versionCode
-            val buildType = buildType.name
             
-            // Format: WhatsApp-Status-Saver-v1.0-release.apk
-            output.outputFileName = "WhatsApp-Status-Saver-v${versionName}-${buildType}.apk"
+            // Format: WhatsApp-Status-Saver-v1.0.apk (no debug/release suffix)
+            output.outputFileName = "WhatsApp-Status-Saver-v${versionName}.apk"
         }
     }
 

@@ -15,6 +15,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // This sets the app name as it appears on the device
+        setProperty("archivesBaseName", "WhatsApp-Status-Saver")
     }
 
     buildTypes {
@@ -24,6 +27,24 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        
+        debug {
+            // Optional: different name for debug builds
+            applicationIdSuffix = ".debug"
+        }
+    }
+    
+    // Custom APK naming
+    applicationVariants.all {
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val versionName = defaultConfig.versionName
+            val versionCode = defaultConfig.versionCode
+            val buildType = buildType.name
+            
+            // Format: WhatsApp-Status-Saver-v1.0-release.apk
+            output.outputFileName = "WhatsApp-Status-Saver-v${versionName}-${buildType}.apk"
         }
     }
 

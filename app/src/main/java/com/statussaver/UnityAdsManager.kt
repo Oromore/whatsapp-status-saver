@@ -13,7 +13,7 @@ object UnityAdsManager {
 
     private const val TAG = "UnityAdsManager"
     private const val GAME_ID = "5966081"
-    private const val TEST_MODE = true // Set to false for production release
+    private const val TEST_MODE = false // Set to false for production release
     
     @Volatile
     private var isInitialized = false

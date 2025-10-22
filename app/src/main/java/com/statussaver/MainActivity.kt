@@ -1,7 +1,6 @@
 package com.statussaver
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -24,7 +23,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var scanner: StatusScanner
     private val PERMISSION_REQUEST_CODE = 100
-    
+
     private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
     private lateinit var rewardedVideoManager: RewardedVideoManager
@@ -41,8 +40,11 @@ class MainActivity : AppCompatActivity() {
         interstitialAdManager = InterstitialAdManager(this)
         rewardedVideoManager = RewardedVideoManager(this)
 
-        // Load banner ad
-        bannerAdManager.loadBanner(binding.adContainer)
+        // Load ads when Unity is ready
+        UnityAdsManager.onReady {
+            bannerAdManager.loadBanner(binding.adContainer)
+            rewardedVideoManager.loadRewardedVideo()
+        }
 
         // Check permissions and load statuses
         if (checkPermissions()) {
@@ -174,15 +176,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        bannerAdManager.loadBanner(binding.adContainer)
+        // Only reload banner if Unity is ready
+        if (UnityAdsManager.isReady()) {
+            bannerAdManager.loadBanner(binding.adContainer)
+        }
         // Refresh counts when returning to this screen
         if (checkPermissions()) {
             loadStatuses()
         }
-    }
-
-    override fun onPause() {
-        super.onPause()
     }
 
     override fun onDestroy() {

@@ -18,23 +18,19 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     companion object {
         private const val TAG = "BannerAdManager"
         private const val BANNER_AD_UNIT_ID = "Banner_Android"
-        private const val MAX_RETRY_ATTEMPTS = 3
-        private const val RETRY_DELAY_MS = 2000L
     }
 
     private var bannerView: BannerView? = null
     private var bannerContainer: FrameLayout? = null
-    private var retryAttempts = 0
-    private var retryRunnable: Runnable? = null
 
     fun loadBanner(container: FrameLayout) {
         bannerContainer = container
         
         // Check if Unity Ads is ready
         if (!UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads not initialized yet - will retry")
+            Log.d(TAG, "Unity Ads not initialized yet - banner will load after initialization")
             container.removeAllViews()
-            scheduleRetry(container)
+            container.visibility = View.GONE
             return
         }
         
@@ -64,26 +60,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
         bannerView?.load()
     }
 
-    private fun scheduleRetry(container: FrameLayout) {
-        if (retryAttempts >= MAX_RETRY_ATTEMPTS) {
-            Log.d(TAG, "Max retry attempts reached, giving up")
-            return
-        }
-        
-        retryAttempts++
-        retryRunnable = Runnable {
-            if (!activity.isDestroyed && !activity.isFinishing) {
-                loadBanner(container)
-            }
-        }
-        container.postDelayed(retryRunnable, RETRY_DELAY_MS)
-    }
-
     fun destroyBanner() {
-        // Cancel any pending retries
-        retryRunnable?.let { bannerContainer?.removeCallbacks(it) }
-        retryRunnable = null
-        
         bannerView?.destroy()
         bannerView = null
         bannerContainer?.removeAllViews()
@@ -94,7 +71,6 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     // BannerView.IListener callbacks
     override fun onBannerLoaded(bannerAdView: BannerView?) {
         Log.d(TAG, "Banner loaded successfully")
-        retryAttempts = 0 // Reset retry counter on success
         bannerAdView?.visibility = View.VISIBLE
         bannerContainer?.visibility = View.VISIBLE
     }

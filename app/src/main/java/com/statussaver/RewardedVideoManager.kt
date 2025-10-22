@@ -27,14 +27,7 @@ class RewardedVideoManager(private val activity: Activity) {
     private var isAdLoaded = false
     private var isLoadingAd = false
 
-    init {
-        // Load rewarded video when Unity Ads is ready
-        if (UnityAdsManager.isReady()) {
-            loadRewardedVideo()
-        }
-    }
-
-    private fun loadRewardedVideo() {
+    fun loadRewardedVideo() {
         if (!UnityAdsManager.isReady() || isLoadingAd) {
             return
         }

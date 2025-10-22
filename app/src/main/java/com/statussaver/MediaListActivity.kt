@@ -1,7 +1,6 @@
 package com.statussaver
 
 import android.content.Intent
-import android.content.Context
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -44,8 +43,11 @@ class MediaListActivity : AppCompatActivity() {
         interstitialAdManager = InterstitialAdManager(this)
         rewardedVideoManager = RewardedVideoManager(this)
 
-        // Load banner ad
-        bannerAdManager.loadBanner(binding.adContainer)
+        // Load ads when Unity is ready
+        UnityAdsManager.onReady {
+            bannerAdManager.loadBanner(binding.adContainer)
+            rewardedVideoManager.loadRewardedVideo()
+        }
 
         setupToolbar()
         setupRecyclerView()
@@ -117,7 +119,7 @@ class MediaListActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 if (success) {
                     Toast.makeText(this@MediaListActivity, "Saved to Downloads/WhatsAppStatus!", Toast.LENGTH_LONG).show()
-                    
+
                     // Track save for interstitial
                     interstitialAdManager.trackSave()
                 } else {
@@ -139,11 +141,10 @@ class MediaListActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        bannerAdManager.loadBanner(binding.adContainer)
-    }
-
-    override fun onPause() {
-        super.onPause()
+        // Only reload banner if Unity is ready
+        if (UnityAdsManager.isReady()) {
+            bannerAdManager.loadBanner(binding.adContainer)
+        }
     }
 
     override fun onDestroy() {

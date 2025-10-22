@@ -22,6 +22,9 @@ object UnityAdsManager {
     private val prefs by lazy { 
         appContext.getSharedPreferences("ad_prefs", Context.MODE_PRIVATE) 
     }
+    
+    // Callback for when Unity Ads finishes initializing
+    private val initializationCallbacks = mutableListOf<() -> Unit>()
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
@@ -36,6 +39,10 @@ object UnityAdsManager {
                 override fun onInitializationComplete() {
                     Log.d(TAG, "Unity Ads initialized successfully")
                     isInitialized = true
+                    
+                    // Notify all waiting callbacks
+                    initializationCallbacks.forEach { it.invoke() }
+                    initializationCallbacks.clear()
                 }
 
                 override fun onInitializationFailed(
@@ -50,6 +57,18 @@ object UnityAdsManager {
     }
 
     fun isReady(): Boolean = isInitialized
+    
+    /**
+     * Register a callback to be called when Unity Ads is ready
+     * If already initialized, calls immediately
+     */
+    fun onReady(callback: () -> Unit) {
+        if (isInitialized) {
+            callback.invoke()
+        } else {
+            initializationCallbacks.add(callback)
+        }
+    }
 
     fun isAdFree(): Boolean {
         val adFreeExpiryTime = prefs.getLong("ad_free_expiry", 0)

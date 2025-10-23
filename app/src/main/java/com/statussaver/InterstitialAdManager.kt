@@ -9,7 +9,7 @@ import com.unity3d.ads.UnityAds
 /**
  * Manages interstitial ad triggers using Unity Ads 4.x API:
  * 1. After 7 status saves (no cooldown)
- * 2. After user interaction with app (10-minute cooldown)
+ * 2. After user interaction with app (3-minute cooldown)
  */
 class InterstitialAdManager(private val activity: Activity) {
 
@@ -18,7 +18,7 @@ class InterstitialAdManager(private val activity: Activity) {
         private const val INTERSTITIAL_AD_UNIT_ID = "Interstitial_Android"
         private const val SAVE_COUNT_KEY = "interstitial_save_count"
         private const val LAST_APP_INTERACTION_AD_KEY = "last_app_interaction_ad_time"
-        private const val COOLDOWN_MINUTES = 10
+        private const val COOLDOWN_MINUTES = 3  // Changed from 10 to 3 minutes
         private const val COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000L
     }
 
@@ -70,11 +70,6 @@ class InterstitialAdManager(private val activity: Activity) {
             return
         }
 
-        if (UnityAdsManager.isAdFree()) {
-            Log.d(TAG, "Ad-free period active - skipping save interstitial")
-            return
-        }
-
         var saveCount = prefs.getInt(SAVE_COUNT_KEY, 0)
         saveCount++
         prefs.edit().putInt(SAVE_COUNT_KEY, saveCount).apply()
@@ -90,7 +85,7 @@ class InterstitialAdManager(private val activity: Activity) {
 
     /**
      * Show interstitial after user interaction with app
-     * Has 10-minute cooldown
+     * Has 3-minute cooldown
      */
     fun trackAppInteraction() {
         if (!UnityAdsManager.isReady()) {
@@ -98,12 +93,7 @@ class InterstitialAdManager(private val activity: Activity) {
             return
         }
 
-        if (UnityAdsManager.isAdFree()) {
-            Log.d(TAG, "Ad-free period active - skipping app interaction interstitial")
-            return
-        }
-
-        // Check if 10-minute cooldown has passed
+        // Check if 3-minute cooldown has passed
         val lastInterstitialTime = prefs.getLong(LAST_APP_INTERACTION_AD_KEY, 0)
         val currentTime = System.currentTimeMillis()
         val timeSinceLastAd = currentTime - lastInterstitialTime

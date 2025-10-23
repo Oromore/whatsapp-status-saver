@@ -30,7 +30,6 @@ class MediaListActivity : AppCompatActivity() {
 
     private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
-    private lateinit var rewardedVideoManager: RewardedVideoManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,16 +48,14 @@ class MediaListActivity : AppCompatActivity() {
         // Initialize ad managers
         bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
-        rewardedVideoManager = RewardedVideoManager(this)
 
         // Wait for Unity Ads to be ready before loading ads
         Log.d(TAG, "Registering Unity Ads ready callback")
         UnityAdsManager.onReady {
             Log.d(TAG, "Unity Ads ready callback triggered")
             runOnUiThread {
-                Log.d(TAG, "Loading banner and rewarded video")
+                Log.d(TAG, "Loading banner")
                 bannerAdManager.loadBanner(binding.adContainer)
-                rewardedVideoManager.loadRewardedVideo()
             }
         }
 

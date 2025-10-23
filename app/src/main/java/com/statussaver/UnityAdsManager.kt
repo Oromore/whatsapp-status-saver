@@ -4,6 +4,9 @@ import android.content.Context
 import android.util.Log
 import com.unity3d.ads.IUnityAdsInitializationListener
 import com.unity3d.ads.UnityAds
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * Singleton manager for Unity Ads
@@ -13,7 +16,7 @@ object UnityAdsManager {
 
     private const val TAG = "UnityAdsManager"
     private const val GAME_ID = "5966081"
-    private const val TEST_MODE = false // Set to false for production release
+    private const val TEST_MODE = true  // ← CHANGED TO TRUE FOR TESTING!
 
     @Volatile
     private var isInitialized = false
@@ -23,15 +26,29 @@ object UnityAdsManager {
         appContext.getSharedPreferences("ad_prefs", Context.MODE_PRIVATE)
     }
 
+    private val logFile by lazy {
+        File(appContext.getExternalFilesDir(null), "unity_ads_debug.txt")
+    }
+
+    private fun logToFile(message: String) {
+        try {
+            val timestamp = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
+            logFile.appendText("[$timestamp] $message\n")
+            Log.d(TAG, message)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write log", e)
+        }
+    }
+
     // Callback for when Unity Ads finishes initializing
     private val initializationCallbacks = mutableListOf<() -> Unit>()
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
 
-        Log.d(TAG, "=== INITIALIZING UNITY ADS ===")
-        Log.d(TAG, "Game ID: $GAME_ID")
-        Log.d(TAG, "Test Mode: $TEST_MODE")
+        logToFile("=== INITIALIZING UNITY ADS ===")
+        logToFile("Game ID: $GAME_ID")
+        logToFile("Test Mode: $TEST_MODE")
 
         UnityAds.initialize(
             appContext,
@@ -39,16 +56,16 @@ object UnityAdsManager {
             TEST_MODE,
             object : IUnityAdsInitializationListener {
                 override fun onInitializationComplete() {
-                    Log.d(TAG, "=== UNITY ADS INITIALIZATION SUCCESS ===")
+                    logToFile("=== UNITY ADS INITIALIZATION SUCCESS ===")
                     isInitialized = true
 
                     // Notify all waiting callbacks
-                    Log.d(TAG, "Notifying ${initializationCallbacks.size} waiting callbacks")
+                    logToFile("Notifying ${initializationCallbacks.size} waiting callbacks")
                     initializationCallbacks.forEach { 
                         try {
                             it.invoke()
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error in initialization callback", e)
+                            logToFile("ERROR in initialization callback: ${e.message}")
                         }
                     }
                     initializationCallbacks.clear()
@@ -58,9 +75,9 @@ object UnityAdsManager {
                     reason: UnityAds.UnityAdsInitializationError,
                     message: String
                 ) {
-                    Log.e(TAG, "=== UNITY ADS INITIALIZATION FAILED ===")
-                    Log.e(TAG, "Reason: $reason")
-                    Log.e(TAG, "Message: $message")
+                    logToFile("=== UNITY ADS INITIALIZATION FAILED ===")
+                    logToFile("Reason: $reason")
+                    logToFile("Message: $message")
                     isInitialized = false
                 }
             }
@@ -68,8 +85,9 @@ object UnityAdsManager {
     }
 
     fun isReady(): Boolean {
-        Log.d(TAG, "isReady() called - Initialized: $isInitialized")
-        return isInitialized
+        val ready = isInitialized
+        logToFile("isReady() called - Result: $ready")
+        return ready
     }
 
     /**
@@ -78,14 +96,14 @@ object UnityAdsManager {
      */
     fun onReady(callback: () -> Unit) {
         if (isInitialized) {
-            Log.d(TAG, "Unity Ads already initialized - calling callback immediately")
+            logToFile("Unity Ads already initialized - calling callback immediately")
             try {
                 callback.invoke()
             } catch (e: Exception) {
-                Log.e(TAG, "Error executing immediate callback", e)
+                logToFile("ERROR executing immediate callback: ${e.message}")
             }
         } else {
-            Log.d(TAG, "Unity Ads not initialized yet - adding callback to queue")
+            logToFile("Unity Ads not initialized yet - adding callback to queue")
             initializationCallbacks.add(callback)
         }
     }
@@ -97,7 +115,7 @@ object UnityAdsManager {
         
         if (isAdFree) {
             val remainingSeconds = (adFreeExpiryTime - currentTime) / 1000
-            Log.d(TAG, "User is ad-free for $remainingSeconds more seconds")
+            logToFile("User is ad-free for $remainingSeconds more seconds")
         }
         
         return isAdFree
@@ -106,7 +124,7 @@ object UnityAdsManager {
     fun activateAdFree(durationMinutes: Long) {
         val expiryTime = System.currentTimeMillis() + (durationMinutes * 60 * 1000)
         prefs.edit().putLong("ad_free_expiry", expiryTime).apply()
-        Log.d(TAG, "Ad-free activated for $durationMinutes minutes")
+        logToFile("Ad-free activated for $durationMinutes minutes")
     }
 
     fun getTimeUntilAdFreeEnds(): Long {

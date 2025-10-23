@@ -1,6 +1,9 @@
 package com.statussaver
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -18,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -80,6 +84,40 @@ class MainActivity : AppCompatActivity() {
             interstitialAdManager.trackAppInteraction()
             openMediaList("AUDIO")
         }
+
+        // DEBUG: Long-press on status count to show logs (REMOVE AFTER DEBUGGING)
+        binding.statusCount.setOnLongClickListener {
+            showDebugLogs()
+            true
+        }
+    }
+
+    private fun showDebugLogs() {
+        val logFile = File(getExternalFilesDir(null), "unity_ads_debug.txt")
+        
+        if (!logFile.exists()) {
+            Toast.makeText(this, "No logs yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val logs = logFile.readText()
+        
+        // Show in AlertDialog
+        AlertDialog.Builder(this)
+            .setTitle("Unity Ads Debug Logs")
+            .setMessage(logs)
+            .setPositiveButton("Copy") { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Unity Ads Logs", logs)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this, "Logs copied to clipboard", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Clear") { _, _ ->
+                logFile.delete()
+                Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("Close", null)
+            .show()
     }
 
     private fun checkPermissions(): Boolean {

@@ -7,6 +7,9 @@ import android.widget.FrameLayout
 import com.unity3d.services.banners.BannerErrorInfo
 import com.unity3d.services.banners.BannerView
 import com.unity3d.services.banners.UnityBannerSize
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * Manages bottom banner ads using Unity Ads 4.x API
@@ -24,13 +27,26 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     private var bannerContainer: FrameLayout? = null
     private var isLoadingBanner = false
 
+    // File logging for debugging
+    private val logFile = File(activity.getExternalFilesDir(null), "unity_ads_debug.txt")
+
+    private fun logToFile(message: String) {
+        try {
+            val timestamp = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
+            logFile.appendText("[$timestamp] $message\n")
+            Log.d(TAG, message)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write log", e)
+        }
+    }
+
     fun loadBanner(container: FrameLayout) {
-        Log.d(TAG, "=== LOAD BANNER CALLED ===")
+        logToFile("=== LOAD BANNER CALLED ===")
         bannerContainer = container
 
         // Check if Unity Ads is ready
         if (!UnityAdsManager.isReady()) {
-            Log.w(TAG, "Unity Ads not initialized yet - cannot load banner")
+            logToFile("ERROR: Unity Ads not initialized yet - cannot load banner")
             container.removeAllViews()
             container.visibility = View.GONE
             return
@@ -38,7 +54,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
 
         // Check if user is in ad-free period
         if (UnityAdsManager.isAdFree()) {
-            Log.d(TAG, "Ad-free period active - hiding banner")
+            logToFile("INFO: Ad-free period active - hiding banner")
             container.removeAllViews()
             container.visibility = View.GONE
             return
@@ -46,11 +62,12 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
 
         // Prevent multiple simultaneous loads
         if (isLoadingBanner) {
-            Log.d(TAG, "Banner already loading - skipping")
+            logToFile("WARNING: Banner already loading - skipping")
             return
         }
 
-        Log.d(TAG, "Loading banner ad with placement: $BANNER_AD_UNIT_ID")
+        logToFile("INFO: Starting banner load")
+        logToFile("Placement ID: $BANNER_AD_UNIT_ID")
 
         // Remove old banner if exists
         bannerView?.destroy()
@@ -59,29 +76,27 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
         isLoadingBanner = true
 
         try {
-            // Create new banner - CORRECT WAY for Unity Ads 4.x
-            // Use standard BANNER size (320x50)
+            // Create new banner
+            logToFile("Creating BannerView with getDynamicSize()")
             bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize.getDynamicSize(activity))
             bannerView?.listener = this
 
-            Log.d(TAG, "BannerView created, adding to container")
-            
-            // Add to container BEFORE loading
+            logToFile("Adding BannerView to container")
             container.addView(bannerView)
             container.visibility = View.VISIBLE
 
-            // Load the banner
-            Log.d(TAG, "Calling banner.load()")
+            logToFile("Calling banner.load()...")
             bannerView?.load()
         } catch (e: Exception) {
-            Log.e(TAG, "Exception creating banner", e)
+            logToFile("EXCEPTION creating banner: ${e.message}")
+            logToFile("Stack trace: ${e.stackTraceToString()}")
             isLoadingBanner = false
             container.visibility = View.GONE
         }
     }
 
     fun destroyBanner() {
-        Log.d(TAG, "Destroying banner")
+        logToFile("Destroying banner")
         bannerView?.destroy()
         bannerView = null
         bannerContainer?.removeAllViews()
@@ -92,29 +107,33 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
 
     // BannerView.IListener callbacks
     override fun onBannerLoaded(bannerAdView: BannerView?) {
-        Log.d(TAG, "=== BANNER LOADED SUCCESSFULLY ===")
+        logToFile("=== BANNER LOADED SUCCESSFULLY ===")
         isLoadingBanner = false
         bannerAdView?.visibility = View.VISIBLE
         bannerContainer?.visibility = View.VISIBLE
     }
 
     override fun onBannerClick(bannerAdView: BannerView?) {
-        Log.d(TAG, "Banner clicked")
+        logToFile("Banner clicked")
     }
 
     override fun onBannerFailedToLoad(bannerAdView: BannerView?, errorInfo: BannerErrorInfo?) {
-        Log.e(TAG, "=== BANNER FAILED TO LOAD ===")
-        Log.e(TAG, "Error Code: ${errorInfo?.errorCode}")
-        Log.e(TAG, "Error Message: ${errorInfo?.errorMessage}")
+        logToFile("=== BANNER FAILED TO LOAD ===")
+        logToFile("Error Code: ${errorInfo?.errorCode}")
+        logToFile("Error Message: ${errorInfo?.errorMessage}")
         isLoadingBanner = false
-        bannerContainer?.visibility = View.GONE
+        
+        // KEEP CONTAINER VISIBLE SO YOU CAN SEE IT FAILED
+        // bannerContainer?.visibility = View.GONE
     }
 
     override fun onBannerLeftApplication(bannerAdView: BannerView?) {
-        Log.d(TAG, "Banner left application")
+        logToFile("Banner left application")
     }
 
     override fun onBannerShown(bannerAdView: BannerView?) {
-        Log.d(TAG, "Banner shown")
+        logToFile("Banner shown")
     }
+
+    fun getLogFilePath(): String = logFile.absolutePath
 }

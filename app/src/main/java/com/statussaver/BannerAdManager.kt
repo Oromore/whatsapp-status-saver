@@ -17,7 +17,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
 
     companion object {
         private const val TAG = "BannerAdManager"
-        private const val BANNER_AD_UNIT_ID = "Banner_Android"
+        private const val BANNER_AD_UNIT_ID = "WhatsApp_status_saver_banner"
     }
 
     private var bannerView: BannerView? = null

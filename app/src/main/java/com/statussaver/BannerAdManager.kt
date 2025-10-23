@@ -55,19 +55,20 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
         // Remove old banner if exists
         bannerView?.destroy()
         container.removeAllViews()
-        container.visibility = View.VISIBLE
 
         isLoadingBanner = true
 
         try {
-            // Create new banner - using standard size
-            bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize(320, 50))
+            // Create new banner - CORRECT WAY for Unity Ads 4.x
+            // Use standard BANNER size (320x50)
+            bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize.getDynamicSize(activity))
             bannerView?.listener = this
 
             Log.d(TAG, "BannerView created, adding to container")
             
-            // Add to container
+            // Add to container BEFORE loading
             container.addView(bannerView)
+            container.visibility = View.VISIBLE
 
             // Load the banner
             Log.d(TAG, "Calling banner.load()")

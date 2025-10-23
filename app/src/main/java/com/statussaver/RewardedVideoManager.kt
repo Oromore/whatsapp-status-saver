@@ -28,16 +28,24 @@ class RewardedVideoManager(private val activity: Activity) {
     private var isLoadingAd = false
 
     fun loadRewardedVideo() {
-        if (!UnityAdsManager.isReady() || isLoadingAd) {
+        if (!UnityAdsManager.isReady()) {
+            Log.w(TAG, "Unity Ads not ready - cannot load rewarded video")
+            return
+        }
+
+        if (isLoadingAd) {
+            Log.d(TAG, "Rewarded video already loading - skipping")
             return
         }
 
         isLoadingAd = true
-        Log.d(TAG, "Loading rewarded video ad")
+        Log.d(TAG, "=== LOADING REWARDED VIDEO ===")
+        Log.d(TAG, "Placement: $REWARDED_AD_UNIT_ID")
 
         UnityAds.load(REWARDED_AD_UNIT_ID, object : IUnityAdsLoadListener {
             override fun onUnityAdsAdLoaded(placementId: String) {
-                Log.d(TAG, "Rewarded video loaded: $placementId")
+                Log.d(TAG, "=== REWARDED VIDEO LOADED SUCCESSFULLY ===")
+                Log.d(TAG, "Placement: $placementId")
                 isAdLoaded = true
                 isLoadingAd = false
             }
@@ -47,7 +55,10 @@ class RewardedVideoManager(private val activity: Activity) {
                 error: UnityAds.UnityAdsLoadError,
                 message: String
             ) {
-                Log.e(TAG, "Rewarded video failed to load: $error - $message")
+                Log.e(TAG, "=== REWARDED VIDEO FAILED TO LOAD ===")
+                Log.e(TAG, "Placement: $placementId")
+                Log.e(TAG, "Error: $error")
+                Log.e(TAG, "Message: $message")
                 isAdLoaded = false
                 isLoadingAd = false
             }
@@ -62,7 +73,14 @@ class RewardedVideoManager(private val activity: Activity) {
         val currentTime = System.currentTimeMillis()
         val timeSinceLastReward = currentTime - lastRewardTime
 
-        return timeSinceLastReward >= REWARD_COOLDOWN_MS
+        val canWatch = timeSinceLastReward >= REWARD_COOLDOWN_MS
+        
+        if (!canWatch) {
+            val minutesRemaining = ((REWARD_COOLDOWN_MS - timeSinceLastReward) / 1000 / 60)
+            Log.d(TAG, "Reward on cooldown - $minutesRemaining minutes remaining")
+        }
+
+        return canWatch
     }
 
     /**
@@ -81,13 +99,22 @@ class RewardedVideoManager(private val activity: Activity) {
     }
 
     /**
+     * Check if rewarded video is ready to show
+     */
+    fun isRewardedVideoReady(): Boolean {
+        return isAdLoaded && UnityAdsManager.isReady()
+    }
+
+    /**
      * Show rewarded video ad
      */
     fun showRewardedVideo() {
+        Log.d(TAG, "=== SHOW REWARDED VIDEO REQUESTED ===")
+
         // Pre-flight checks
         if (!UnityAdsManager.isReady()) {
             Toast.makeText(activity, "Ads not ready yet, please try again", Toast.LENGTH_SHORT).show()
-            Log.d(TAG, "Unity Ads not ready yet")
+            Log.w(TAG, "Unity Ads not ready yet")
             return
         }
 
@@ -105,7 +132,7 @@ class RewardedVideoManager(private val activity: Activity) {
 
         if (!isAdLoaded) {
             Toast.makeText(activity, "Rewarded video not ready, loading...", Toast.LENGTH_SHORT).show()
-            Log.d(TAG, "Rewarded video ad not loaded yet")
+            Log.w(TAG, "Rewarded video ad not loaded yet")
             if (!isLoadingAd) {
                 loadRewardedVideo() // Try loading
             }
@@ -113,7 +140,7 @@ class RewardedVideoManager(private val activity: Activity) {
         }
 
         // All checks passed - show the ad
-        Log.d(TAG, "Showing rewarded video ad")
+        Log.d(TAG, "Showing rewarded video ad - Placement: $REWARDED_AD_UNIT_ID")
 
         UnityAds.show(
             activity,
@@ -124,25 +151,30 @@ class RewardedVideoManager(private val activity: Activity) {
                     error: UnityAds.UnityAdsShowError,
                     message: String
                 ) {
-                    Log.e(TAG, "Rewarded video show failed: $error - $message")
+                    Log.e(TAG, "=== REWARDED VIDEO SHOW FAILED ===")
+                    Log.e(TAG, "Placement: $placementId")
+                    Log.e(TAG, "Error: $error")
+                    Log.e(TAG, "Message: $message")
                     Toast.makeText(activity, "Failed to load video", Toast.LENGTH_SHORT).show()
                     isAdLoaded = false
                     loadRewardedVideo() // Reload for next time
                 }
 
                 override fun onUnityAdsShowStart(placementId: String) {
-                    Log.d(TAG, "Rewarded video show started")
+                    Log.d(TAG, "Rewarded video show started - Placement: $placementId")
                 }
 
                 override fun onUnityAdsShowClick(placementId: String) {
-                    Log.d(TAG, "Rewarded video clicked")
+                    Log.d(TAG, "Rewarded video clicked - Placement: $placementId")
                 }
 
                 override fun onUnityAdsShowComplete(
                     placementId: String,
                     state: UnityAds.UnityAdsShowCompletionState
                 ) {
-                    Log.d(TAG, "Rewarded video completed: $state")
+                    Log.d(TAG, "=== REWARDED VIDEO COMPLETED ===")
+                    Log.d(TAG, "Placement: $placementId")
+                    Log.d(TAG, "State: $state")
 
                     // Check if video was watched completely
                     if (state == UnityAds.UnityAdsShowCompletionState.COMPLETED) {
@@ -171,7 +203,10 @@ class RewardedVideoManager(private val activity: Activity) {
         // Set cooldown for next reward
         prefs.edit().putLong(LAST_REWARD_TIME_KEY, System.currentTimeMillis()).apply()
 
-        Log.d(TAG, "User rewarded: $AD_FREE_DURATION_MINUTES minutes ad-free")
+        Log.d(TAG, "=== USER REWARDED ===")
+        Log.d(TAG, "Ad-free duration: $AD_FREE_DURATION_MINUTES minutes")
+        Log.d(TAG, "Next reward available in: $REWARD_COOLDOWN_HOURS hours")
+        
         Toast.makeText(
             activity,
             "Enjoy $AD_FREE_DURATION_MINUTES minutes without ads!",

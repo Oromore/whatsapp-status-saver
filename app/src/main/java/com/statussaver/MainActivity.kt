@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -20,6 +21,10 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var scanner: StatusScanner
     private val PERMISSION_REQUEST_CODE = 100
@@ -33,6 +38,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        Log.d(TAG, "=== MainActivity onCreate ===")
+
         scanner = StatusScanner(this)
 
         // Initialize ad managers
@@ -40,10 +47,15 @@ class MainActivity : AppCompatActivity() {
         interstitialAdManager = InterstitialAdManager(this)
         rewardedVideoManager = RewardedVideoManager(this)
 
-        // Load ads when Unity is ready
+        // Wait for Unity Ads to be ready before loading ads
+        Log.d(TAG, "Registering Unity Ads ready callback")
         UnityAdsManager.onReady {
-            bannerAdManager.loadBanner(binding.adContainer)
-            rewardedVideoManager.loadRewardedVideo()
+            Log.d(TAG, "Unity Ads ready callback triggered")
+            runOnUiThread {
+                Log.d(TAG, "Loading banner and rewarded video")
+                bannerAdManager.loadBanner(binding.adContainer)
+                rewardedVideoManager.loadRewardedVideo()
+            }
         }
 
         // Check permissions and load statuses
@@ -176,10 +188,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Only reload banner if Unity is ready
+        Log.d(TAG, "=== onResume ===")
+        
+        // Reload banner if Unity is ready
         if (UnityAdsManager.isReady()) {
+            Log.d(TAG, "Unity Ads ready - reloading banner")
             bannerAdManager.loadBanner(binding.adContainer)
+        } else {
+            Log.d(TAG, "Unity Ads not ready yet")
         }
+        
         // Refresh counts when returning to this screen
         if (checkPermissions()) {
             loadStatuses()
@@ -187,6 +205,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        Log.d(TAG, "=== onDestroy ===")
         bannerAdManager.destroyBanner()
         super.onDestroy()
     }

@@ -14,34 +14,43 @@ object UnityAdsManager {
     private const val TAG = "UnityAdsManager"
     private const val GAME_ID = "5966081"
     private const val TEST_MODE = false // Set to false for production release
-    
+
     @Volatile
     private var isInitialized = false
-    
+
     private lateinit var appContext: Context
-    private val prefs by lazy { 
-        appContext.getSharedPreferences("ad_prefs", Context.MODE_PRIVATE) 
+    private val prefs by lazy {
+        appContext.getSharedPreferences("ad_prefs", Context.MODE_PRIVATE)
     }
-    
+
     // Callback for when Unity Ads finishes initializing
     private val initializationCallbacks = mutableListOf<() -> Unit>()
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
-        
-        Log.d(TAG, "Initializing Unity Ads with Game ID: $GAME_ID (Test Mode: $TEST_MODE)")
-        
+
+        Log.d(TAG, "=== INITIALIZING UNITY ADS ===")
+        Log.d(TAG, "Game ID: $GAME_ID")
+        Log.d(TAG, "Test Mode: $TEST_MODE")
+
         UnityAds.initialize(
             appContext,
             GAME_ID,
             TEST_MODE,
             object : IUnityAdsInitializationListener {
                 override fun onInitializationComplete() {
-                    Log.d(TAG, "Unity Ads initialized successfully")
+                    Log.d(TAG, "=== UNITY ADS INITIALIZATION SUCCESS ===")
                     isInitialized = true
-                    
+
                     // Notify all waiting callbacks
-                    initializationCallbacks.forEach { it.invoke() }
+                    Log.d(TAG, "Notifying ${initializationCallbacks.size} waiting callbacks")
+                    initializationCallbacks.forEach { 
+                        try {
+                            it.invoke()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error in initialization callback", e)
+                        }
+                    }
                     initializationCallbacks.clear()
                 }
 
@@ -49,23 +58,34 @@ object UnityAdsManager {
                     reason: UnityAds.UnityAdsInitializationError,
                     message: String
                 ) {
-                    Log.e(TAG, "Unity Ads initialization failed: $reason - $message")
+                    Log.e(TAG, "=== UNITY ADS INITIALIZATION FAILED ===")
+                    Log.e(TAG, "Reason: $reason")
+                    Log.e(TAG, "Message: $message")
                     isInitialized = false
                 }
             }
         )
     }
 
-    fun isReady(): Boolean = isInitialized
-    
+    fun isReady(): Boolean {
+        Log.d(TAG, "isReady() called - Initialized: $isInitialized")
+        return isInitialized
+    }
+
     /**
      * Register a callback to be called when Unity Ads is ready
      * If already initialized, calls immediately
      */
     fun onReady(callback: () -> Unit) {
         if (isInitialized) {
-            callback.invoke()
+            Log.d(TAG, "Unity Ads already initialized - calling callback immediately")
+            try {
+                callback.invoke()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error executing immediate callback", e)
+            }
         } else {
+            Log.d(TAG, "Unity Ads not initialized yet - adding callback to queue")
             initializationCallbacks.add(callback)
         }
     }
@@ -73,7 +93,14 @@ object UnityAdsManager {
     fun isAdFree(): Boolean {
         val adFreeExpiryTime = prefs.getLong("ad_free_expiry", 0)
         val currentTime = System.currentTimeMillis()
-        return currentTime < adFreeExpiryTime
+        val isAdFree = currentTime < adFreeExpiryTime
+        
+        if (isAdFree) {
+            val remainingSeconds = (adFreeExpiryTime - currentTime) / 1000
+            Log.d(TAG, "User is ad-free for $remainingSeconds more seconds")
+        }
+        
+        return isAdFree
     }
 
     fun activateAdFree(durationMinutes: Long) {

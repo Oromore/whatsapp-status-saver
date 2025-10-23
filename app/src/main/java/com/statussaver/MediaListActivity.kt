@@ -2,6 +2,7 @@ package com.statussaver
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -16,6 +17,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MediaListActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "MediaListActivity"
+    }
 
     private lateinit var binding: ActivityMediaListBinding
     private lateinit var scanner: StatusScanner
@@ -32,21 +37,29 @@ class MediaListActivity : AppCompatActivity() {
         binding = ActivityMediaListBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        Log.d(TAG, "=== MediaListActivity onCreate ===")
+
         scanner = StatusScanner(this)
         fileSaver = FileSaver(this)
 
         // Get media type from intent
         mediaType = intent.getStringExtra("MEDIA_TYPE") ?: "IMAGE"
+        Log.d(TAG, "Media type: $mediaType")
 
         // Initialize ad managers
         bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
         rewardedVideoManager = RewardedVideoManager(this)
 
-        // Load ads when Unity is ready
+        // Wait for Unity Ads to be ready before loading ads
+        Log.d(TAG, "Registering Unity Ads ready callback")
         UnityAdsManager.onReady {
-            bannerAdManager.loadBanner(binding.adContainer)
-            rewardedVideoManager.loadRewardedVideo()
+            Log.d(TAG, "Unity Ads ready callback triggered")
+            runOnUiThread {
+                Log.d(TAG, "Loading banner and rewarded video")
+                bannerAdManager.loadBanner(binding.adContainer)
+                rewardedVideoManager.loadRewardedVideo()
+            }
         }
 
         setupToolbar()
@@ -141,14 +154,20 @@ class MediaListActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Only reload banner if Unity is ready
+        Log.d(TAG, "=== onResume ===")
+        
+        // Reload banner if Unity is ready
         if (UnityAdsManager.isReady()) {
+            Log.d(TAG, "Unity Ads ready - reloading banner")
             bannerAdManager.loadBanner(binding.adContainer)
+        } else {
+            Log.d(TAG, "Unity Ads not ready yet")
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d(TAG, "=== onDestroy ===")
         bannerAdManager.destroyBanner()
     }
 }

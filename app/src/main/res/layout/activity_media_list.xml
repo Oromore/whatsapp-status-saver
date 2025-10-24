@@ -69,12 +69,13 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Banner Ad Container - FIXED HEIGHT! -->
+    <!-- Banner Ad Container - 300x250 Medium Rectangle -->
     <FrameLayout
         android:id="@+id/adContainer"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:background="#000000"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        android:layout_width="300dp"
+        android:layout_height="250dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

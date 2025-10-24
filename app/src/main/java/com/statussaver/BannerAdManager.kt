@@ -17,7 +17,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
 
     companion object {
         private const val TAG = "BannerAdManager"
-        private const val BANNER_AD_UNIT_ID = "WhatsApp_status_saver_banner"
+        private const val BANNER_AD_UNIT_ID = "Banner_Android"
     }
 
     private var bannerView: BannerView? = null
@@ -51,11 +51,11 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
         isLoadingBanner = true
 
         try {
-            // Create new banner - Standard 320x50 size
-            bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize(320, 50))
+            // Create new banner - Medium Rectangle 300x250 size
+            bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize(300, 250))
             bannerView?.listener = this
 
-            Log.d(TAG, "BannerView created with 320x50 size, adding to container")
+            Log.d(TAG, "BannerView created with 300x250 size, adding to container")
             
             // Add to container
             container.addView(bannerView)

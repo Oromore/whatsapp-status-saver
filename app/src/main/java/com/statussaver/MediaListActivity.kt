@@ -49,12 +49,11 @@ class MediaListActivity : AppCompatActivity() {
         bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
 
-        // Wait for Unity Ads to be ready before loading ads
+        // Wait for Unity Ads to be ready before loading banner
         Log.d(TAG, "Registering Unity Ads ready callback")
         UnityAdsManager.onReady {
-            Log.d(TAG, "Unity Ads ready callback triggered")
+            Log.d(TAG, "Unity Ads ready - loading banner")
             runOnUiThread {
-                Log.d(TAG, "Loading banner")
                 bannerAdManager.loadBanner(binding.adContainer)
             }
         }
@@ -152,19 +151,25 @@ class MediaListActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "=== onResume ===")
-        
-        // Reload banner if Unity is ready
+
+        // Show banner if Unity is ready (banner is reused, not recreated)
         if (UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads ready - reloading banner")
-            bannerAdManager.loadBanner(binding.adContainer)
-        } else {
-            Log.d(TAG, "Unity Ads not ready yet")
+            Log.d(TAG, "Unity Ads ready - showing banner")
+            bannerAdManager.showBanner()
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d(TAG, "=== onPause ===")
+        // Hide banner when activity is not visible
+        bannerAdManager.hideBanner()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "=== onDestroy ===")
+        // Only destroy banner when activity is being destroyed
         bannerAdManager.destroyBanner()
     }
 }

@@ -5,6 +5,7 @@ import android.util.Log
 import com.unity3d.ads.IUnityAdsLoadListener
 import com.unity3d.ads.IUnityAdsShowListener
 import com.unity3d.ads.UnityAds
+import com.unity3d.ads.UnityAdsShowOptions
 
 /**
  * Manages interstitial ad triggers using Unity Ads 4.x API:
@@ -118,9 +119,13 @@ class InterstitialAdManager(private val activity: Activity) {
 
         Log.d(TAG, "Showing interstitial ad (updateCooldown: $updateCooldown)")
 
+        // Create UnityAdsShowOptions as required by Unity Ads 4.x
+        val showOptions = UnityAdsShowOptions()
+
         UnityAds.show(
             activity,
             INTERSTITIAL_AD_UNIT_ID,
+            showOptions,
             object : IUnityAdsShowListener {
                 override fun onUnityAdsShowFailure(
                     placementId: String,

@@ -9,9 +9,9 @@ import com.unity3d.services.banners.BannerView
 import com.unity3d.services.banners.UnityBannerSize
 
 /**
- * Manages bottom banner ads using Unity Ads 4.x API
- * Unity handles refresh automatically via dashboard settings
- * Hides during ad-free periods
+ * Manages bottom banner ads using Unity Ads 4.16.1 API
+ * Follows official Unity documentation pattern
+ * Creates banner once and reuses it instead of destroying/recreating
  */
 class BannerAdManager(private val activity: Activity) : BannerView.IListener {
 
@@ -21,91 +21,129 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     }
 
     private var bannerView: BannerView? = null
-    private var bannerContainer: FrameLayout? = null
-    private var isLoadingBanner = false
+    private var currentContainer: FrameLayout? = null
 
+    /**
+     * Load and display banner ad in the specified container
+     * Reuses existing banner if already created
+     */
     fun loadBanner(container: FrameLayout) {
-        Log.d(TAG, "=== LOAD BANNER CALLED ===")
-        bannerContainer = container
-
+        Log.d(TAG, "=== loadBanner() called ===")
+        
         // Check if Unity Ads is ready
         if (!UnityAdsManager.isReady()) {
             Log.w(TAG, "Unity Ads not initialized yet - cannot load banner")
-            container.removeAllViews()
             container.visibility = View.GONE
             return
         }
 
-        // Prevent multiple simultaneous loads
-        if (isLoadingBanner) {
-            Log.d(TAG, "Banner already loading - skipping")
+        // Store the container reference
+        currentContainer = container
+
+        // If banner already exists, just ensure it's in the right container
+        if (bannerView != null) {
+            Log.d(TAG, "Banner already exists - reusing it")
+            
+            // Remove from old container if it was in a different one
+            (bannerView?.parent as? FrameLayout)?.removeView(bannerView)
+            
+            // Add to new container if not already there
+            if (bannerView?.parent == null) {
+                container.addView(bannerView)
+                Log.d(TAG, "Banner moved to new container")
+            }
+            
+            container.visibility = View.VISIBLE
             return
         }
 
-        Log.d(TAG, "Loading banner ad with placement: $BANNER_AD_UNIT_ID")
-
-        // Remove old banner if exists
-        bannerView?.destroy()
-        container.removeAllViews()
-
-        isLoadingBanner = true
-
+        // Create new banner - Standard Mobile Banner 320x50
+        Log.d(TAG, "Creating new banner with placement: $BANNER_AD_UNIT_ID")
+        
         try {
-            // Create new banner - Large Mobile Banner 320x90 size
-            bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize(320, 90))
-            bannerView?.listener = this
-
-            Log.d(TAG, "BannerView created with 320x90 size, adding to container")
+            bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize(320, 50))
+            bannerView?.setListener(this)
             
-            // Add to container
+            // Load the banner first
+            Log.d(TAG, "Loading banner...")
+            bannerView?.load()
+            
+            // Add to container after load() is called
             container.addView(bannerView)
             container.visibility = View.VISIBLE
-
-            // Load the banner
-            Log.d(TAG, "Calling banner.load()")
-            bannerView?.load()
+            
+            Log.d(TAG, "Banner created and added to container")
+            
         } catch (e: Exception) {
             Log.e(TAG, "Exception creating banner", e)
-            isLoadingBanner = false
             container.visibility = View.GONE
         }
     }
 
+    /**
+     * Hide banner without destroying it (can be shown again)
+     */
+    fun hideBanner() {
+        Log.d(TAG, "Hiding banner")
+        currentContainer?.visibility = View.GONE
+    }
+
+    /**
+     * Show banner if it exists and is loaded
+     */
+    fun showBanner() {
+        Log.d(TAG, "Showing banner")
+        if (bannerView != null && currentContainer != null) {
+            currentContainer?.visibility = View.VISIBLE
+        }
+    }
+
+    /**
+     * Destroy banner - only call this when activity is being destroyed
+     */
     fun destroyBanner() {
         Log.d(TAG, "Destroying banner")
+        
+        currentContainer?.removeAllViews()
+        currentContainer?.visibility = View.GONE
+        currentContainer = null
+        
         bannerView?.destroy()
         bannerView = null
-        bannerContainer?.removeAllViews()
-        bannerContainer?.visibility = View.GONE
-        bannerContainer = null
-        isLoadingBanner = false
     }
 
-    // BannerView.IListener callbacks
+    // ========== BannerView.IListener Callbacks ==========
+
     override fun onBannerLoaded(bannerAdView: BannerView?) {
         Log.d(TAG, "=== BANNER LOADED SUCCESSFULLY ===")
-        isLoadingBanner = false
-        bannerAdView?.visibility = View.VISIBLE
-        bannerContainer?.visibility = View.VISIBLE
-    }
-
-    override fun onBannerClick(bannerAdView: BannerView?) {
-        Log.d(TAG, "Banner clicked")
+        Log.d(TAG, "Placement: ${bannerAdView?.placementId}")
+        
+        activity.runOnUiThread {
+            bannerAdView?.visibility = View.VISIBLE
+            currentContainer?.visibility = View.VISIBLE
+        }
     }
 
     override fun onBannerFailedToLoad(bannerAdView: BannerView?, errorInfo: BannerErrorInfo?) {
         Log.e(TAG, "=== BANNER FAILED TO LOAD ===")
+        Log.e(TAG, "Placement: ${bannerAdView?.placementId}")
         Log.e(TAG, "Error Code: ${errorInfo?.errorCode}")
         Log.e(TAG, "Error Message: ${errorInfo?.errorMessage}")
-        isLoadingBanner = false
-        bannerContainer?.visibility = View.GONE
+        
+        activity.runOnUiThread {
+            currentContainer?.visibility = View.GONE
+        }
+    }
+
+    override fun onBannerClick(bannerAdView: BannerView?) {
+        Log.d(TAG, "Banner clicked: ${bannerAdView?.placementId}")
     }
 
     override fun onBannerLeftApplication(bannerAdView: BannerView?) {
-        Log.d(TAG, "Banner left application")
+        Log.d(TAG, "Banner left application: ${bannerAdView?.placementId}")
     }
 
     override fun onBannerShown(bannerAdView: BannerView?) {
-        Log.d(TAG, "Banner shown")
+        Log.d(TAG, "Banner shown: ${bannerAdView?.placementId}")
     }
 }

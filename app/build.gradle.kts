@@ -9,13 +9,13 @@ android {
 
     defaultConfig {
         applicationId = "com.statussaver.whatsapp"
-        minSdk = 21
+        minSdk = 23  // Updated from 21 to 23 (required by Unity Ads SDK 4.14+)
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         // This sets the app name as it appears on the device
         setProperty("archivesBaseName", "WhatsApp-Status-Saver")
     }
@@ -28,19 +28,18 @@ android {
                 "proguard-rules.pro"
             )
         }
-        
+
         debug {
             // Optional: different name for debug builds
             applicationIdSuffix = ".debug"
         }
     }
-    
+
     // Custom APK naming - clean filename without build type
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = defaultConfig.versionName
-            
             // Format: WhatsApp-Status-Saver-v1.0.apk (no debug/release suffix)
             output.outputFileName = "WhatsApp-Status-Saver-v${versionName}.apk"
         }
@@ -77,8 +76,8 @@ dependencies {
     // Glide for image loading - Latest
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
-    // Unity Ads - Latest
-    implementation("com.unity3d.ads:unity-ads:4.12.2")
+    // Unity Ads - Updated to 4.16.3
+    implementation("com.unity3d.ads:unity-ads:4.16.3")
 
     // Coroutines - Latest
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

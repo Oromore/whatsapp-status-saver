@@ -51,11 +51,11 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
         isLoadingBanner = true
 
         try {
-            // Create new banner - Medium Rectangle 300x250 size
-            bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize(300, 250))
+            // Create new banner - Large Mobile Banner 320x90 size
+            bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize(320, 90))
             bannerView?.listener = this
 
-            Log.d(TAG, "BannerView created with 300x250 size, adding to container")
+            Log.d(TAG, "BannerView created with 320x90 size, adding to container")
             
             // Add to container
             container.addView(bannerView)

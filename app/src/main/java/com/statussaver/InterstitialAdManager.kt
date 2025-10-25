@@ -10,7 +10,7 @@ import com.unity3d.ads.UnityAdsShowOptions
 /**
  * Manages interstitial ad triggers using Unity Ads 4.x API:
  * 1. After 7 status saves (no cooldown)
- * 2. After user interaction with app (3-minute cooldown)
+ * 2. After user interaction with app (1-minute cooldown)
  */
 class InterstitialAdManager(private val activity: Activity) {
 
@@ -19,7 +19,7 @@ class InterstitialAdManager(private val activity: Activity) {
         private const val INTERSTITIAL_AD_UNIT_ID = "Interstitial_Android"
         private const val SAVE_COUNT_KEY = "interstitial_save_count"
         private const val LAST_APP_INTERACTION_AD_KEY = "last_app_interaction_ad_time"
-        private const val COOLDOWN_MINUTES = 3  // Changed from 10 to 3 minutes
+        private const val COOLDOWN_MINUTES = 1  // Changed from 3 to 1 minute
         private const val COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000L
     }
 
@@ -86,7 +86,7 @@ class InterstitialAdManager(private val activity: Activity) {
 
     /**
      * Show interstitial after user interaction with app
-     * Has 3-minute cooldown
+     * Has 1-minute cooldown
      */
     fun trackAppInteraction() {
         if (!UnityAdsManager.isReady()) {
@@ -94,7 +94,7 @@ class InterstitialAdManager(private val activity: Activity) {
             return
         }
 
-        // Check if 3-minute cooldown has passed
+        // Check if 1-minute cooldown has passed
         val lastInterstitialTime = prefs.getLong(LAST_APP_INTERACTION_AD_KEY, 0)
         val currentTime = System.currentTimeMillis()
         val timeSinceLastAd = currentTime - lastInterstitialTime

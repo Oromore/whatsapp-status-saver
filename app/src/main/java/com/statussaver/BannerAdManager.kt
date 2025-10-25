@@ -21,8 +21,9 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
 
     companion object {
         private const val TAG = "BannerAdManager"
-        private const val BANNER_AD_UNIT_ID = "Banner_Android"
-        private const val RETRY_DELAY_MS = 2000L // Retry every 2 seconds on failure
+        private const val BANNER_AD_UNIT_ID = "WhatsApp_status_saver_banner"
+        private const val BASE_RETRY_DELAY_MS = 2000L // Base retry delay: 2 seconds
+        private const val MAX_RETRY_DELAY_MS = 10000L // Max retry delay: 10 seconds
         private const val HEALTH_CHECK_INTERVAL_MS = 2000L // Check health every 2 seconds
         private const val MAX_RETRIES = -1 // Unlimited retries - NEVER GIVE UP!
     }
@@ -32,10 +33,10 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     private var retryCount = 0
     private var isLoaded = false
     private var isDestroyed = false
-    
+
     private val retryHandler = Handler(Looper.getMainLooper())
     private val healthCheckHandler = Handler(Looper.getMainLooper())
-    
+
     private var retryRunnable: Runnable? = null
     private var healthCheckRunnable: Runnable? = null
 
@@ -88,7 +89,6 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
             isLoaded = false
 
             Log.d(TAG, "Banner load() called")
-
         } catch (e: Exception) {
             Log.e(TAG, "Exception creating banner", e)
             scheduleRetry()
@@ -102,7 +102,16 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
 
         // Unlimited retries - never give up!
         retryCount++
-        Log.d(TAG, "Scheduling retry in ${RETRY_DELAY_MS}ms (attempt $retryCount)")
+        
+        // Calculate exponential backoff delay: 2s, 4s, 6s, 8s, 10s, then reset
+        val currentDelay = (BASE_RETRY_DELAY_MS * retryCount).coerceAtMost(MAX_RETRY_DELAY_MS)
+        
+        // Reset retry count if we've reached max delay (creates the cycle)
+        if (currentDelay >= MAX_RETRY_DELAY_MS) {
+            retryCount = 0
+        }
+        
+        Log.d(TAG, "Scheduling retry in ${currentDelay}ms (attempt $retryCount)")
 
         cancelRetry()
         retryRunnable = Runnable {
@@ -110,7 +119,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
             createBanner()
         }
 
-        retryHandler.postDelayed(retryRunnable!!, RETRY_DELAY_MS)
+        retryHandler.postDelayed(retryRunnable!!, currentDelay)
     }
 
     private fun cancelRetry() {
@@ -127,7 +136,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
         Log.d(TAG, "Starting health check (every ${HEALTH_CHECK_INTERVAL_MS}ms)")
 
         cancelHealthCheck()
-        
+
         healthCheckRunnable = object : Runnable {
             override fun run() {
                 if (isDestroyed) {
@@ -136,7 +145,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
                 }
 
                 performHealthCheck()
-                
+
                 // Schedule next health check
                 healthCheckHandler.postDelayed(this, HEALTH_CHECK_INTERVAL_MS)
             }

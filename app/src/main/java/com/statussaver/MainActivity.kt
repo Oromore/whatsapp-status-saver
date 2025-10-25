@@ -80,12 +80,12 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "Showing $mediaType fragment")
 
         // Hide entire home screen
-        binding.homeScreen.visibility = View.GONE
+        binding.homeContent.visibility = View.GONE
 
-        // Show fragment in mainContainer
+        // Show fragment in fragmentContainer
         val fragment = MediaListFragment.newInstance(mediaType)
         supportFragmentManager.beginTransaction()
-            .replace(R.id.mainContainer, fragment)
+            .replace(R.id.fragmentContainer, fragment)
             .commit()
     }
 
@@ -98,7 +98,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Show home screen
-        binding.homeScreen.visibility = View.VISIBLE
+        binding.homeContent.visibility = View.VISIBLE
 
         // Reload status counts
         if (checkPermissions()) {
@@ -194,12 +194,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showContent() {
-        binding.contentLayout.visibility = View.VISIBLE
+        binding.homeContent.visibility = View.VISIBLE
         binding.emptyState.visibility = View.GONE
     }
 
     private fun showEmptyState() {
-        binding.contentLayout.visibility = View.GONE
+        binding.homeContent.visibility = View.GONE
         binding.emptyState.visibility = View.VISIBLE
         binding.statusCount.text = ""
     }

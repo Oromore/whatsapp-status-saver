@@ -184,10 +184,12 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "=== onResume ===")
 
-        // Show banner (singleton will reuse existing banner)
+        // Load banner immediately if Unity is already ready
         if (UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads ready - loading banner")
+            Log.d(TAG, "Unity Ads ready - loading banner immediately")
             BannerAdManager.loadBanner(this, binding.adContainer)
+        } else {
+            Log.d(TAG, "Unity Ads not ready yet - will load via callback")
         }
 
         // Refresh counts when returning to this screen

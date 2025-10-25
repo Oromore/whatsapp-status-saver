@@ -150,10 +150,12 @@ class MediaListActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "=== onResume ===")
 
-        // Load banner (singleton will reuse existing banner - instant!)
+        // Load banner immediately if Unity is ready (instant display with singleton!)
         if (UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads ready - loading banner")
+            Log.d(TAG, "Unity Ads ready - loading banner immediately")
             BannerAdManager.loadBanner(this, binding.adContainer)
+        } else {
+            Log.d(TAG, "Unity Ads not ready yet - will load via callback")
         }
     }
 

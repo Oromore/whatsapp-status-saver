@@ -22,9 +22,9 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     companion object {
         private const val TAG = "BannerAdManager"
         private const val BANNER_AD_UNIT_ID = "Banner_Android"
-        private const val RETRY_DELAY_MS = 5000L // Retry every 5 seconds on failure
-        private const val HEALTH_CHECK_INTERVAL_MS = 5000L // Check health every 5 seconds
-        private const val MAX_RETRIES = 10 // Try 10 times, then give up
+        private const val RETRY_DELAY_MS = 2000L // Retry every 2 seconds on failure
+        private const val HEALTH_CHECK_INTERVAL_MS = 2000L // Check health every 2 seconds
+        private const val MAX_RETRIES = -1 // Unlimited retries - NEVER GIVE UP!
     }
 
     private var bannerView: BannerView? = null
@@ -100,14 +100,9 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
             return
         }
 
-        if (retryCount >= MAX_RETRIES) {
-            Log.e(TAG, "Max retries reached - giving up")
-            container?.visibility = View.GONE
-            return
-        }
-
+        // Unlimited retries - never give up!
         retryCount++
-        Log.d(TAG, "Scheduling retry in ${RETRY_DELAY_MS}ms (attempt $retryCount/$MAX_RETRIES)")
+        Log.d(TAG, "Scheduling retry in ${RETRY_DELAY_MS}ms (attempt $retryCount)")
 
         cancelRetry()
         retryRunnable = Runnable {
@@ -126,7 +121,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     }
 
     /**
-     * Start health check - verifies banner is alive every 5 seconds
+     * Start health check - verifies banner is alive every 2 seconds
      */
     private fun startHealthCheck() {
         Log.d(TAG, "Starting health check (every ${HEALTH_CHECK_INTERVAL_MS}ms)")
@@ -171,11 +166,25 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
             return
         }
 
+        // Check if container is attached to window
+        if (container?.isAttachedToWindow == false) {
+            Log.w(TAG, "Health check WARNING: Container not attached to window")
+            return
+        }
+
         // Check if banner is visible
         if (bannerView?.visibility != View.VISIBLE) {
             Log.w(TAG, "Health check FAILED: Banner not visible - making visible")
             activity.runOnUiThread {
                 bannerView?.visibility = View.VISIBLE
+                container?.visibility = View.VISIBLE
+            }
+        }
+
+        // Check if container is visible
+        if (container?.visibility != View.VISIBLE) {
+            Log.w(TAG, "Health check FAILED: Container not visible - making visible")
+            activity.runOnUiThread {
                 container?.visibility = View.VISIBLE
             }
         }

@@ -28,7 +28,6 @@ class MediaListActivity : AppCompatActivity() {
     private lateinit var adapter: MediaAdapter
     private var mediaType: String = "IMAGE"
 
-    private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,8 +44,7 @@ class MediaListActivity : AppCompatActivity() {
         mediaType = intent.getStringExtra("MEDIA_TYPE") ?: "IMAGE"
         Log.d(TAG, "Media type: $mediaType")
 
-        // Initialize ad managers
-        bannerAdManager = BannerAdManager(this)
+        // Initialize interstitial ad manager
         interstitialAdManager = InterstitialAdManager(this)
 
         // Wait for Unity Ads to be ready before loading banner
@@ -54,7 +52,7 @@ class MediaListActivity : AppCompatActivity() {
         UnityAdsManager.onReady {
             Log.d(TAG, "Unity Ads ready - loading banner")
             runOnUiThread {
-                bannerAdManager.loadBanner(binding.adContainer)
+                BannerAdManager.loadBanner(this@MediaListActivity, binding.adContainer)
             }
         }
 
@@ -152,10 +150,10 @@ class MediaListActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "=== onResume ===")
 
-        // Show banner if Unity is ready (banner is reused, not recreated)
+        // Load banner (singleton will reuse existing banner - instant!)
         if (UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads ready - showing banner")
-            bannerAdManager.showBanner()
+            Log.d(TAG, "Unity Ads ready - loading banner")
+            BannerAdManager.loadBanner(this, binding.adContainer)
         }
     }
 
@@ -163,13 +161,12 @@ class MediaListActivity : AppCompatActivity() {
         super.onPause()
         Log.d(TAG, "=== onPause ===")
         // Hide banner when activity is not visible
-        bannerAdManager.hideBanner()
+        BannerAdManager.hideBanner()
     }
 
+    // DON'T destroy banner here - it's a singleton!
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "=== onDestroy ===")
-        // Only destroy banner when activity is being destroyed
-        bannerAdManager.destroyBanner()
     }
 }

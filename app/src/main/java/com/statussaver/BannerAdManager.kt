@@ -9,27 +9,25 @@ import com.unity3d.services.banners.BannerView
 import com.unity3d.services.banners.UnityBannerSize
 
 /**
- * Manages bottom banner ads using Unity Ads 4.16.1 API
- * Follows official Unity documentation pattern
- * Creates banner once and reuses it instead of destroying/recreating
+ * Singleton BannerAdManager - ONE banner shared across all activities
+ * Banner persists and moves between screens for instant display
  */
-class BannerAdManager(private val activity: Activity) : BannerView.IListener {
+object BannerAdManager : BannerView.IListener {
 
-    companion object {
-        private const val TAG = "BannerAdManager"
-        private const val BANNER_AD_UNIT_ID = "Banner_Android"
-    }
+    private const val TAG = "BannerAdManager"
+    private const val BANNER_AD_UNIT_ID = "Banner_Android"
 
     private var bannerView: BannerView? = null
     private var currentContainer: FrameLayout? = null
+    private var currentActivity: Activity? = null
 
     /**
-     * Load and display banner ad in the specified container
-     * Reuses existing banner if already created
+     * Load and display banner in the specified container
+     * Reuses existing banner - just moves it to new container
      */
-    fun loadBanner(container: FrameLayout) {
-        Log.d(TAG, "=== loadBanner() called ===")
-        
+    fun loadBanner(activity: Activity, container: FrameLayout) {
+        Log.d(TAG, "=== loadBanner() called for ${activity.javaClass.simpleName} ===")
+
         // Check if Unity Ads is ready
         if (!UnityAdsManager.isReady()) {
             Log.w(TAG, "Unity Ads not initialized yet - cannot load banner")
@@ -37,43 +35,42 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
             return
         }
 
-        // Store the container reference
+        // Update current references
+        currentActivity = activity
         currentContainer = container
 
-        // If banner already exists, just ensure it's in the right container
+        // If banner already exists, just move it to new container
         if (bannerView != null) {
-            Log.d(TAG, "Banner already exists - reusing it")
-            
-            // Remove from old container if it was in a different one
+            Log.d(TAG, "Banner exists - moving to new container")
+
+            // Remove from old parent
             (bannerView?.parent as? FrameLayout)?.removeView(bannerView)
-            
-            // Add to new container if not already there
-            if (bannerView?.parent == null) {
-                container.addView(bannerView)
-                Log.d(TAG, "Banner moved to new container")
-            }
-            
+
+            // Add to new container
+            container.addView(bannerView)
             container.visibility = View.VISIBLE
+
+            Log.d(TAG, "Banner moved successfully - instant display!")
             return
         }
 
-        // Create new banner - Standard Mobile Banner 320x50
+        // Create new banner (first time only)
         Log.d(TAG, "Creating new banner with placement: $BANNER_AD_UNIT_ID")
-        
+
         try {
             bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize(320, 50))
             bannerView?.setListener(this)
-            
-            // Load the banner first
+
+            // Load the banner
             Log.d(TAG, "Loading banner...")
             bannerView?.load()
-            
-            // Add to container after load() is called
+
+            // Add to container
             container.addView(bannerView)
             container.visibility = View.VISIBLE
-            
-            Log.d(TAG, "Banner created and added to container")
-            
+
+            Log.d(TAG, "Banner created and loading")
+
         } catch (e: Exception) {
             Log.e(TAG, "Exception creating banner", e)
             container.visibility = View.GONE
@@ -81,7 +78,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     }
 
     /**
-     * Hide banner without destroying it (can be shown again)
+     * Hide banner without removing it
      */
     fun hideBanner() {
         Log.d(TAG, "Hiding banner")
@@ -89,7 +86,7 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     }
 
     /**
-     * Show banner if it exists and is loaded
+     * Show banner if it exists
      */
     fun showBanner() {
         Log.d(TAG, "Showing banner")
@@ -99,15 +96,17 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     }
 
     /**
-     * Destroy banner - only call this when activity is being destroyed
+     * ONLY destroy when app is completely closing
+     * DON'T call this in onDestroy() of activities
      */
     fun destroyBanner() {
-        Log.d(TAG, "Destroying banner")
-        
+        Log.d(TAG, "Destroying banner (should only happen on app close)")
+
         currentContainer?.removeAllViews()
         currentContainer?.visibility = View.GONE
         currentContainer = null
-        
+        currentActivity = null
+
         bannerView?.destroy()
         bannerView = null
     }
@@ -117,8 +116,8 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
     override fun onBannerLoaded(bannerAdView: BannerView?) {
         Log.d(TAG, "=== BANNER LOADED SUCCESSFULLY ===")
         Log.d(TAG, "Placement: ${bannerAdView?.placementId}")
-        
-        activity.runOnUiThread {
+
+        currentActivity?.runOnUiThread {
             bannerAdView?.visibility = View.VISIBLE
             currentContainer?.visibility = View.VISIBLE
         }
@@ -129,8 +128,8 @@ class BannerAdManager(private val activity: Activity) : BannerView.IListener {
         Log.e(TAG, "Placement: ${bannerAdView?.placementId}")
         Log.e(TAG, "Error Code: ${errorInfo?.errorCode}")
         Log.e(TAG, "Error Message: ${errorInfo?.errorMessage}")
-        
-        activity.runOnUiThread {
+
+        currentActivity?.runOnUiThread {
             currentContainer?.visibility = View.GONE
         }
     }

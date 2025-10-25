@@ -23,14 +23,13 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
-        // Static reference to keep banner alive across activities
-        private var bannerAdManager: BannerAdManager? = null
     }
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var scanner: StatusScanner
     private val PERMISSION_REQUEST_CODE = 100
 
+    private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,26 +41,17 @@ class MainActivity : AppCompatActivity() {
 
         scanner = StatusScanner(this)
 
-        // Initialize interstitial ad manager
+        // Initialize ad managers
+        bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
 
-        // Create banner manager ONCE (first time only)
-        if (bannerAdManager == null) {
-            Log.d(TAG, "Creating NEW BannerAdManager (first time)")
-            bannerAdManager = BannerAdManager(this)
-
-            // Wait for Unity Ads to be ready before loading banner
-            Log.d(TAG, "Registering Unity Ads ready callback")
-            UnityAdsManager.onReady {
-                Log.d(TAG, "Unity Ads ready - loading banner")
-                runOnUiThread {
-                    bannerAdManager?.loadBanner(binding.adContainer)
-                }
+        // Wait for Unity Ads to be ready before loading banner
+        Log.d(TAG, "Registering Unity Ads ready callback")
+        UnityAdsManager.onReady {
+            Log.d(TAG, "Unity Ads ready - loading banner")
+            runOnUiThread {
+                bannerAdManager.loadBanner(binding.adContainer)
             }
-        } else {
-            Log.d(TAG, "Reusing existing BannerAdManager")
-            // Banner already exists, just show it in this container
-            bannerAdManager?.loadBanner(binding.adContainer)
         }
 
         // Check permissions and load statuses
@@ -196,8 +186,11 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "=== onResume ===")
 
-        // Ensure banner is in our container
-        bannerAdManager?.loadBanner(binding.adContainer)
+        // Show banner if Unity is ready (banner is reused, not recreated)
+        if (UnityAdsManager.isReady()) {
+            Log.d(TAG, "Unity Ads ready - showing banner")
+            bannerAdManager.showBanner()
+        }
 
         // Refresh counts when returning to this screen
         if (checkPermissions()) {
@@ -208,21 +201,14 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "=== onPause ===")
-        // DON'T hide banner - let it stay visible
+        // Hide banner when activity is not visible
+        bannerAdManager.hideBanner()
     }
 
     override fun onDestroy() {
         Log.d(TAG, "=== onDestroy ===")
-        
-        // ONLY destroy banner if app is truly closing (user pressed back on MainActivity)
-        if (isFinishing && !isChangingConfigurations) {
-            Log.d(TAG, "App is closing - destroying banner")
-            bannerAdManager?.destroyBanner()
-            bannerAdManager = null
-        } else {
-            Log.d(TAG, "Just navigating away - keeping banner alive")
-        }
-        
+        // Only destroy banner when activity is being destroyed
+        bannerAdManager.destroyBanner()
         super.onDestroy()
     }
 }

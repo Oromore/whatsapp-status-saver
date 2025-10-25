@@ -19,7 +19,7 @@
         app:navigationIconTint="@color/text_white"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- RecyclerView with Native Ads -->
+    <!-- RecyclerView -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
@@ -27,7 +27,7 @@
         android:padding="8dp"
         android:clipToPadding="false"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
-        app:layout_constraintBottom_toTopOf="@id/adContainer" />
+        app:layout_constraintBottom_toBottomOf="parent" />
 
     <!-- Loading Progress -->
     <ProgressBar
@@ -50,7 +50,7 @@
         android:padding="32dp"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
-        app:layout_constraintBottom_toTopOf="@id/adContainer">
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <TextView
             android:layout_width="wrap_content"
@@ -68,14 +68,5 @@
             android:textSize="18sp"
             android:textStyle="bold" />
     </LinearLayout>
-
-    <!-- Banner Ad Container - 320x90 Large Mobile Banner -->
-    <FrameLayout
-        android:id="@+id/adContainer"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

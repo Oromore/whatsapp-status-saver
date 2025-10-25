@@ -3,60 +3,66 @@ package com.statussaver
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.statussaver.core.FileSaver
 import com.statussaver.core.MediaItem
 import com.statussaver.core.StatusScanner
-import com.statussaver.databinding.ActivityMediaListBinding
+import com.statussaver.databinding.FragmentMediaListBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MediaListActivity : AppCompatActivity() {
+class MediaListFragment : Fragment() {
 
     companion object {
-        private const val TAG = "MediaListActivity"
+        private const val TAG = "MediaListFragment"
+        private const val ARG_MEDIA_TYPE = "media_type"
+
+        fun newInstance(mediaType: String): MediaListFragment {
+            return MediaListFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_MEDIA_TYPE, mediaType)
+                }
+            }
+        }
     }
 
-    private lateinit var binding: ActivityMediaListBinding
+    private var _binding: FragmentMediaListBinding? = null
+    private val binding get() = _binding!!
+
     private lateinit var scanner: StatusScanner
     private lateinit var fileSaver: FileSaver
     private lateinit var adapter: MediaAdapter
+    private lateinit var interstitialAdManager: InterstitialAdManager
     private var mediaType: String = "IMAGE"
 
-    private lateinit var bannerAdManager: BannerAdManager
-    private lateinit var interstitialAdManager: InterstitialAdManager
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentMediaListBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityMediaListBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        Log.d(TAG, "=== MediaListActivity onCreate ===")
+        Log.d(TAG, "=== MediaListFragment onViewCreated ===")
 
-        scanner = StatusScanner(this)
-        fileSaver = FileSaver(this)
+        scanner = StatusScanner(requireContext())
+        fileSaver = FileSaver(requireContext())
+        interstitialAdManager = InterstitialAdManager(requireActivity())
 
-        // Get media type from intent
-        mediaType = intent.getStringExtra("MEDIA_TYPE") ?: "IMAGE"
+        // Get media type from arguments
+        mediaType = arguments?.getString(ARG_MEDIA_TYPE) ?: "IMAGE"
         Log.d(TAG, "Media type: $mediaType")
-
-        // Initialize ad managers
-        bannerAdManager = BannerAdManager(this)
-        interstitialAdManager = InterstitialAdManager(this)
-
-        // Wait for Unity Ads to be ready before loading banner
-        Log.d(TAG, "Registering Unity Ads ready callback")
-        UnityAdsManager.onReady {
-            Log.d(TAG, "Unity Ads ready - loading banner")
-            runOnUiThread {
-                bannerAdManager.loadBanner(binding.adContainer)
-            }
-        }
 
         setupToolbar()
         setupRecyclerView()
@@ -71,7 +77,10 @@ class MediaListActivity : AppCompatActivity() {
             else -> "Media"
         }
         binding.toolbar.title = title
-        binding.toolbar.setNavigationOnClickListener { finish() }
+        binding.toolbar.setNavigationOnClickListener {
+            // Go back to home screen
+            (activity as? MainActivity)?.showHomeScreen()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -85,8 +94,8 @@ class MediaListActivity : AppCompatActivity() {
         )
 
         binding.recyclerView.apply {
-            layoutManager = LinearLayoutManager(this@MediaListActivity)
-            adapter = this@MediaListActivity.adapter
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = this@MediaListFragment.adapter
         }
     }
 
@@ -115,7 +124,7 @@ class MediaListActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     binding.progressBar.visibility = View.GONE
                     binding.emptyState.visibility = View.VISIBLE
-                    Toast.makeText(this@MediaListActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -127,19 +136,19 @@ class MediaListActivity : AppCompatActivity() {
 
             withContext(Dispatchers.Main) {
                 if (success) {
-                    Toast.makeText(this@MediaListActivity, "Saved to Downloads/WhatsAppStatus!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "Saved to Downloads/WhatsAppStatus!", Toast.LENGTH_LONG).show()
 
                     // Track save for interstitial
                     interstitialAdManager.trackSave()
                 } else {
-                    Toast.makeText(this@MediaListActivity, "Failed to save", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "Failed to save", Toast.LENGTH_LONG).show()
                 }
             }
         }
     }
 
     private fun openMediaViewer(item: MediaItem) {
-        val intent = Intent(this, MediaViewerActivity::class.java)
+        val intent = Intent(requireContext(), MediaViewerActivity::class.java)
         intent.putExtra("MEDIA_PATH", item.path)
         intent.putExtra("MEDIA_NAME", item.fileName)
         intent.putExtra("MEDIA_SIZE", item.size)
@@ -148,28 +157,8 @@ class MediaListActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    override fun onResume() {
-        super.onResume()
-        Log.d(TAG, "=== onResume ===")
-
-        // Show banner if Unity is ready (banner is reused, not recreated)
-        if (UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads ready - showing banner")
-            bannerAdManager.showBanner()
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        Log.d(TAG, "=== onPause ===")
-        // Hide banner when activity is not visible
-        bannerAdManager.hideBanner()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d(TAG, "=== onDestroy ===")
-        // Only destroy banner when activity is being destroyed
-        bannerAdManager.destroyBanner()
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

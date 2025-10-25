@@ -1,7 +1,6 @@
 package com.statussaver
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -45,10 +44,9 @@ class MainActivity : AppCompatActivity() {
         bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
 
-        // Wait for Unity Ads to be ready before loading banner
-        Log.d(TAG, "Registering Unity Ads ready callback")
+        // Wait for Unity Ads ready, then load PERMANENT banner
         UnityAdsManager.onReady {
-            Log.d(TAG, "Unity Ads ready - loading banner")
+            Log.d(TAG, "Unity Ads ready - loading PERMANENT banner")
             runOnUiThread {
                 bannerAdManager.loadBanner(binding.adContainer)
             }
@@ -61,20 +59,50 @@ class MainActivity : AppCompatActivity() {
             requestPermissions()
         }
 
-        // Set up click listeners
+        // Set up click listeners - switch to fragments instead of new activities
         binding.btnImages.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
-            openMediaList("IMAGE")
+            showMediaFragment("IMAGE")
         }
 
         binding.btnVideos.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
-            openMediaList("VIDEO")
+            showMediaFragment("VIDEO")
         }
 
         binding.btnAudio.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
-            openMediaList("AUDIO")
+            showMediaFragment("AUDIO")
+        }
+    }
+
+    private fun showMediaFragment(mediaType: String) {
+        Log.d(TAG, "Showing $mediaType fragment")
+
+        // Hide home content
+        binding.homeContent.visibility = View.GONE
+
+        // Show fragment
+        val fragment = MediaListFragment.newInstance(mediaType)
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
+            .commit()
+    }
+
+    fun showHomeScreen() {
+        Log.d(TAG, "Showing home screen")
+
+        // Remove fragment
+        supportFragmentManager.fragments.forEach {
+            supportFragmentManager.beginTransaction().remove(it).commit()
+        }
+
+        // Show home content
+        binding.homeContent.visibility = View.VISIBLE
+
+        // Reload status counts
+        if (checkPermissions()) {
+            loadStatuses()
         }
     }
 
@@ -85,7 +113,7 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         } else {
-            // Android 12 and below - CHECK BOTH READ AND WRITE
+            // Android 12 and below
             val readPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
             val writePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
             readPermission && writePermission
@@ -166,49 +194,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showContent() {
-        binding.contentLayout.visibility = View.VISIBLE
+        binding.homeContent.visibility = View.VISIBLE
         binding.emptyState.visibility = View.GONE
     }
 
     private fun showEmptyState() {
-        binding.contentLayout.visibility = View.GONE
+        binding.homeContent.visibility = View.GONE
         binding.emptyState.visibility = View.VISIBLE
         binding.statusCount.text = ""
     }
 
-    private fun openMediaList(type: String) {
-        val intent = Intent(this, MediaListActivity::class.java)
-        intent.putExtra("MEDIA_TYPE", type)
-        startActivity(intent)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        Log.d(TAG, "=== onResume ===")
-
-        // Show banner if Unity is ready (banner is reused, not recreated)
-        if (UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads ready - showing banner")
-            bannerAdManager.showBanner()
+    override fun onBackPressed() {
+        // If fragment is showing, go back to home
+        if (supportFragmentManager.fragments.isNotEmpty()) {
+            showHomeScreen()
+        } else {
+            // Otherwise, exit app
+            super.onBackPressed()
         }
-
-        // Refresh counts when returning to this screen
-        if (checkPermissions()) {
-            loadStatuses()
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        Log.d(TAG, "=== onPause ===")
-        // Hide banner when activity is not visible
-        bannerAdManager.hideBanner()
     }
 
     override fun onDestroy() {
         Log.d(TAG, "=== onDestroy ===")
-        // Only destroy banner when activity is being destroyed
-        bannerAdManager.destroyBanner()
+        
+        // Only destroy banner if activity is finishing (app closing)
+        if (isFinishing) {
+            Log.d(TAG, "App closing - destroying banner")
+            bannerAdManager.destroy()
+        }
+        
         super.onDestroy()
     }
 }

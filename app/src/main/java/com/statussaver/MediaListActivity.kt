@@ -47,9 +47,14 @@ class MediaListActivity : AppCompatActivity() {
         // Initialize interstitial ad manager
         interstitialAdManager = InterstitialAdManager(this)
 
-        // Load banner immediately - it will handle Unity Ads readiness internally
-        Log.d(TAG, "Loading persistent banner")
-        BannerAdManager.loadBanner(this, binding.adContainer)
+        // Wait for Unity Ads to be ready before loading banner (YOUR ORIGINAL CODE)
+        Log.d(TAG, "Registering Unity Ads ready callback")
+        UnityAdsManager.onReady {
+            Log.d(TAG, "Unity Ads ready - loading banner")
+            runOnUiThread {
+                BannerAdManager.loadBanner(this@MediaListActivity, binding.adContainer)
+            }
+        }
 
         setupToolbar()
         setupRecyclerView()
@@ -145,22 +150,24 @@ class MediaListActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "=== onResume ===")
 
-        // Just ensure banner is in our container (it stays alive across activities)
-        // No reload needed - banner is persistent and auto-refreshing
-        BannerAdManager.loadBanner(this, binding.adContainer)
+        // Load banner immediately if Unity is ready (YOUR ORIGINAL LOGIC)
+        if (UnityAdsManager.isReady()) {
+            Log.d(TAG, "Unity Ads ready - loading banner immediately")
+            BannerAdManager.loadBanner(this, binding.adContainer)
+        } else {
+            Log.d(TAG, "Unity Ads not ready yet - will load via callback")
+        }
     }
 
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "=== onPause ===")
-        // DON'T hide banner - it stays visible 24/7
-        // Banner will move to next activity automatically
+        // DON'T hide banner - let it stay visible
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "=== onDestroy ===")
-        // DON'T destroy banner - it's a persistent singleton
-        // It will move to the next activity
+        // DON'T destroy banner - it's persistent
     }
 }

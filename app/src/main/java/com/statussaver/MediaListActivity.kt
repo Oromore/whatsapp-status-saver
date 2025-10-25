@@ -20,6 +20,12 @@ class MediaListActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MediaListActivity"
+        // Get reference to the shared banner manager from MainActivity
+        private val bannerAdManager: BannerAdManager?
+            get() = MainActivity.Companion::class.java.getDeclaredField("bannerAdManager").let { field ->
+                field.isAccessible = true
+                field.get(null) as? BannerAdManager
+            }
     }
 
     private lateinit var binding: ActivityMediaListBinding
@@ -28,7 +34,6 @@ class MediaListActivity : AppCompatActivity() {
     private lateinit var adapter: MediaAdapter
     private var mediaType: String = "IMAGE"
 
-    private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,18 +50,12 @@ class MediaListActivity : AppCompatActivity() {
         mediaType = intent.getStringExtra("MEDIA_TYPE") ?: "IMAGE"
         Log.d(TAG, "Media type: $mediaType")
 
-        // Initialize ad managers
-        bannerAdManager = BannerAdManager(this)
+        // Initialize interstitial ad manager
         interstitialAdManager = InterstitialAdManager(this)
 
-        // Wait for Unity Ads to be ready before loading banner
-        Log.d(TAG, "Registering Unity Ads ready callback")
-        UnityAdsManager.onReady {
-            Log.d(TAG, "Unity Ads ready - loading banner")
-            runOnUiThread {
-                bannerAdManager.loadBanner(binding.adContainer)
-            }
-        }
+        // Move the existing banner to this activity's container
+        Log.d(TAG, "Moving banner to MediaListActivity")
+        bannerAdManager?.loadBanner(binding.adContainer)
 
         setupToolbar()
         setupRecyclerView()
@@ -152,24 +151,19 @@ class MediaListActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "=== onResume ===")
 
-        // Show banner if Unity is ready (banner is reused, not recreated)
-        if (UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads ready - showing banner")
-            bannerAdManager.showBanner()
-        }
+        // Ensure banner is in our container
+        bannerAdManager?.loadBanner(binding.adContainer)
     }
 
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "=== onPause ===")
-        // Hide banner when activity is not visible
-        bannerAdManager.hideBanner()
+        // DON'T hide banner - let it stay visible
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "=== onDestroy ===")
-        // Only destroy banner when activity is being destroyed
-        bannerAdManager.destroyBanner()
+        // DON'T destroy banner - it belongs to MainActivity lifecycle
     }
 }

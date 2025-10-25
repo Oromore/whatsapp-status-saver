@@ -46,11 +46,17 @@ object BannerAdManager : BannerView.IListener {
             // Remove from old parent
             (bannerView?.parent as? FrameLayout)?.removeView(bannerView)
 
+            // RE-REGISTER LISTENER (critical for maintaining connection!)
+            bannerView?.setListener(this)
+
+            // REFRESH/RELOAD (uses cached ad, displays instantly)
+            bannerView?.load()
+
             // Add to new container
             container.addView(bannerView)
             container.visibility = View.VISIBLE
 
-            Log.d(TAG, "Banner moved successfully - instant display!")
+            Log.d(TAG, "Banner moved successfully with refreshed listener")
             return
         }
 

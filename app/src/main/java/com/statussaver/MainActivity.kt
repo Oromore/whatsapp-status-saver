@@ -79,8 +79,10 @@ class MainActivity : AppCompatActivity() {
     private fun showMediaFragment(mediaType: String) {
         Log.d(TAG, "Showing $mediaType fragment")
 
-        // Hide entire home screen
+        // Hide ONLY the header and home content (NOT the ad container!)
+        binding.header.visibility = View.GONE
         binding.homeContent.visibility = View.GONE
+        // Ad container ALWAYS stays visible - never touch it!
 
         // Show fragment in fragmentContainer
         val fragment = MediaListFragment.newInstance(mediaType)
@@ -97,8 +99,10 @@ class MainActivity : AppCompatActivity() {
             supportFragmentManager.beginTransaction().remove(it).commit()
         }
 
-        // Show home screen
+        // Show header and home screen again
+        binding.header.visibility = View.VISIBLE
         binding.homeContent.visibility = View.VISIBLE
+        // Ad container ALWAYS stays visible!
 
         // Reload status counts
         if (checkPermissions()) {

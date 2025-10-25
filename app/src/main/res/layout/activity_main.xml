@@ -44,7 +44,7 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- BLUE AREA: Swappable Content (Home screen OR Fragments) -->
+    <!-- Swappable Content Area (Home screen OR Fragments) -->
     <FrameLayout
         android:id="@+id/fragmentContainer"
         android:layout_width="match_parent"
@@ -243,7 +243,7 @@
 
     </FrameLayout>
 
-    <!-- RED AREA: PERMANENT Banner Ad - NEVER CHANGES! -->
+    <!-- PERMANENT Banner Ad - NEVER CHANGES! ALWAYS VISIBLE! -->
     <FrameLayout
         android:id="@+id/adContainer"
         android:layout_width="320dp"

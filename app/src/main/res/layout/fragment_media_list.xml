@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/background">
 
-    <!-- Toolbar -->
+    <!-- Toolbar (Simple header like Image 3) -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -19,12 +19,13 @@
         app:navigationIconTint="@color/text_white"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- RecyclerView -->
+    <!-- RecyclerView (with bottom padding so items don't hide behind ad) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:padding="8dp"
+        android:paddingBottom="60dp"
         android:clipToPadding="false"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintBottom_toBottomOf="parent" />

@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var scanner: StatusScanner
     private val PERMISSION_REQUEST_CODE = 100
 
+    private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,7 +41,8 @@ class MainActivity : AppCompatActivity() {
 
         scanner = StatusScanner(this)
 
-        // Initialize interstitial ad manager
+        // Initialize ad managers
+        bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
 
         // Wait for Unity Ads to be ready before loading banner
@@ -48,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         UnityAdsManager.onReady {
             Log.d(TAG, "Unity Ads ready - loading banner")
             runOnUiThread {
-                BannerAdManager.loadBanner(this@MainActivity, binding.adContainer)
+                bannerAdManager.loadBanner(binding.adContainer)
             }
         }
 
@@ -184,10 +186,10 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "=== onResume ===")
 
-        // Load banner if Unity is ready (singleton handles persistence)
+        // Show banner if Unity is ready (banner is reused, not recreated)
         if (UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads ready - loading banner")
-            BannerAdManager.loadBanner(this, binding.adContainer)
+            Log.d(TAG, "Unity Ads ready - showing banner")
+            bannerAdManager.showBanner()
         }
 
         // Refresh counts when returning to this screen
@@ -199,20 +201,14 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "=== onPause ===")
-        // DON'T hide banner - let it stay visible 24/7
+        // Hide banner when activity is not visible
+        bannerAdManager.hideBanner()
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         Log.d(TAG, "=== onDestroy ===")
-        
-        // CRITICAL: Only destroy banner when MainActivity is truly finishing
-        // (user pressed back to exit app, NOT configuration change like rotation)
-        if (isFinishing && !isChangingConfigurations) {
-            Log.d(TAG, "MainActivity is truly FINISHING (App closing) - DESTROYING Global Banner")
-            BannerAdManager.destroyBanner()
-        } else {
-            Log.d(TAG, "MainActivity being recreated or navigating away - keeping banner alive")
-        }
+        // Only destroy banner when activity is being destroyed
+        bannerAdManager.destroyBanner()
+        super.onDestroy()
     }
 }

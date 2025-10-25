@@ -28,6 +28,7 @@ class MediaListActivity : AppCompatActivity() {
     private lateinit var adapter: MediaAdapter
     private var mediaType: String = "IMAGE"
 
+    private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,15 +45,16 @@ class MediaListActivity : AppCompatActivity() {
         mediaType = intent.getStringExtra("MEDIA_TYPE") ?: "IMAGE"
         Log.d(TAG, "Media type: $mediaType")
 
-        // Initialize interstitial ad manager
+        // Initialize ad managers
+        bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
 
-        // Wait for Unity Ads to be ready before loading banner (YOUR ORIGINAL CODE)
+        // Wait for Unity Ads to be ready before loading banner
         Log.d(TAG, "Registering Unity Ads ready callback")
         UnityAdsManager.onReady {
             Log.d(TAG, "Unity Ads ready - loading banner")
             runOnUiThread {
-                BannerAdManager.loadBanner(this@MediaListActivity, binding.adContainer)
+                bannerAdManager.loadBanner(binding.adContainer)
             }
         }
 
@@ -150,24 +152,24 @@ class MediaListActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "=== onResume ===")
 
-        // Load banner immediately if Unity is ready (YOUR ORIGINAL LOGIC)
+        // Show banner if Unity is ready (banner is reused, not recreated)
         if (UnityAdsManager.isReady()) {
-            Log.d(TAG, "Unity Ads ready - loading banner immediately")
-            BannerAdManager.loadBanner(this, binding.adContainer)
-        } else {
-            Log.d(TAG, "Unity Ads not ready yet - will load via callback")
+            Log.d(TAG, "Unity Ads ready - showing banner")
+            bannerAdManager.showBanner()
         }
     }
 
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "=== onPause ===")
-        // DON'T hide banner - let it stay visible
+        // Hide banner when activity is not visible
+        bannerAdManager.hideBanner()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "=== onDestroy ===")
-        // DON'T destroy banner - it's persistent
+        // Only destroy banner when activity is being destroyed
+        bannerAdManager.destroyBanner()
     }
 }

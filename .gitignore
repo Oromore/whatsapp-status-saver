@@ -30,9 +30,5 @@ local.properties
 .externalNativeBuild
 .cxx
 
-# Keystore files
-*.jks
-*.keystore
-
 # Log Files
 *.log

@@ -20,8 +20,19 @@ android {
         setProperty("archivesBaseName", "WhatsApp-Status-Saver")
     }
 
+    // Signing configuration for release builds
+    signingConfigs {
+        create("release") {
+            storeFile = file("../release-key.jks")
+            storePassword = "Hegira@005"
+            keyAlias = "statussaver-key"
+            keyPassword = "Hegira@005"
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

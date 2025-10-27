@@ -8,16 +8,16 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.statussaver.whatsapp"
-        minSdk = 23  // Updated from 21 to 23 (required by Unity Ads SDK 4.14+)
+        applicationId = "com.statussaver.wa"  // CHANGED: removed whatsapp
+        minSdk = 23
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // This sets the app name as it appears on the device
-        setProperty("archivesBaseName", "WhatsApp-Status-Saver")
+        // CHANGED: Updated app name
+        setProperty("archivesBaseName", "WA-Status-Saver")
     }
 
     // Signing configuration for release builds
@@ -41,18 +41,17 @@ android {
         }
 
         debug {
-            // Optional: different name for debug builds
             applicationIdSuffix = ".debug"
         }
     }
 
-    // Custom APK naming - clean filename without build type
+    // CHANGED: Updated APK naming
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = defaultConfig.versionName
-            // Format: WhatsApp-Status-Saver-v1.0.apk (no debug/release suffix)
-            output.outputFileName = "WhatsApp-Status-Saver-v${versionName}.apk"
+            // Format: WA-Status-Saver-v1.0.apk
+            output.outputFileName = "WA-Status-Saver-v${versionName}.apk"
         }
     }
 

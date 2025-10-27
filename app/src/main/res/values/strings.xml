@@ -1,16 +1,16 @@
 <resources>
-    <string name="app_name">WhatsApp Status Saver</string>
+    <string name="app_name">Status Saver</string>
 
     <!-- Main Activity -->
-    <string name="main_title">WhatsApp Status Saver</string>
-    <string name="main_subtitle">Save images, videos, and audio from WhatsApp status</string>
+    <string name="main_title">Status Saver</string>
+    <string name="main_subtitle">Save images, videos, and audio from WA status</string>
     <string name="category_images">Images</string>
     <string name="category_videos">Videos</string>
     <string name="category_audio">Audio</string>
     <string name="no_statuses_found">No statuses found</string>
     <string name="view_someones_status">View someone\'s status first, then come back here</string>
     <string name="permission_required">Storage Permission Required</string>
-    <string name="permission_message">This app needs storage permission to access WhatsApp statuses</string>
+    <string name="permission_message">This app needs storage permission to access statuses</string>
     <string name="grant_permission">Grant Permission</string>
 
     <!-- Media List Activity -->

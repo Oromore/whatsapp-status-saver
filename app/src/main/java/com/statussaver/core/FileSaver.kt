@@ -18,14 +18,14 @@ class FileSaver(private val context: Context) {
     private val TAG = "FileSaver"
 
     /**
-     * Main function: Saves a media item to Downloads/WhatsAppStatus/
+     * Main function: Saves a media item to Downloads/WAStatus/
      * Returns: Success or failure
      */
     fun saveToDownloads(item: MediaItem): Boolean {
         return try {
             Log.d(TAG, "Attempting to save: ${item.fileName}")
             Log.d(TAG, "Android version: ${Build.VERSION.SDK_INT}")
-            
+
             val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // Android 10+ (Scoped Storage)
                 Log.d(TAG, "Using MediaStore method")
@@ -35,7 +35,7 @@ class FileSaver(private val context: Context) {
                 Log.d(TAG, "Using FileSystem method")
                 saveUsingFileSystem(item)
             }
-            
+
             Log.d(TAG, "Save result: $result")
             result
         } catch (e: Exception) {
@@ -54,7 +54,7 @@ class FileSaver(private val context: Context) {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, item.fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, getMimeType(item.type))
                 put(MediaStore.MediaColumns.RELATIVE_PATH,
-                    "${Environment.DIRECTORY_DOWNLOADS}/WhatsAppStatus")
+                    "${Environment.DIRECTORY_DOWNLOADS}/WAStatus")
             }
 
             val collection = when (item.type) {
@@ -65,12 +65,12 @@ class FileSaver(private val context: Context) {
 
             val resolver = context.contentResolver
             val uri = resolver.insert(collection, contentValues)
-            
+
             if (uri == null) {
                 Log.e(TAG, "Failed to create MediaStore entry")
                 return false
             }
-            
+
             Log.d(TAG, "Created MediaStore URI: $uri")
 
             resolver.openOutputStream(uri)?.use { outputStream ->
@@ -95,15 +95,15 @@ class FileSaver(private val context: Context) {
             val downloadsDir = Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_DOWNLOADS
             )
-            
+
             Log.d(TAG, "Downloads directory: ${downloadsDir?.absolutePath}")
-            
+
             if (downloadsDir == null || !downloadsDir.exists()) {
                 Log.e(TAG, "Downloads directory doesn't exist or is null")
                 return false
             }
-            
-            val statusDir = File(downloadsDir, "WhatsAppStatus")
+
+            val statusDir = File(downloadsDir, "WAStatus")
             Log.d(TAG, "Status directory: ${statusDir.absolutePath}")
 
             // Create folder if it doesn't exist
@@ -118,14 +118,14 @@ class FileSaver(private val context: Context) {
 
             val destFile = File(statusDir, item.fileName)
             Log.d(TAG, "Destination file: ${destFile.absolutePath}")
-            
+
             // Check if source file exists
             val sourceFile = File(item.path)
             if (!sourceFile.exists()) {
                 Log.e(TAG, "Source file doesn't exist: ${item.path}")
                 return false
             }
-            
+
             Log.d(TAG, "Source file size: ${sourceFile.length()} bytes")
 
             // Copy file
@@ -135,17 +135,17 @@ class FileSaver(private val context: Context) {
                     Log.d(TAG, "Copied $bytes bytes to destination")
                 }
             }
-            
+
             if (!destFile.exists()) {
                 Log.e(TAG, "Destination file was not created")
                 return false
             }
-            
+
             Log.d(TAG, "Destination file size: ${destFile.length()} bytes")
 
             // Notify media scanner
             notifyMediaScanner(destFile.absolutePath)
-            
+
             Log.d(TAG, "Save completed successfully")
             return true
         } catch (e: Exception) {
@@ -192,7 +192,7 @@ class FileSaver(private val context: Context) {
         val downloadsDir = Environment.getExternalStoragePublicDirectory(
             Environment.DIRECTORY_DOWNLOADS
         )
-        val statusDir = File(downloadsDir, "WhatsAppStatus")
+        val statusDir = File(downloadsDir, "WAStatus")
         val file = File(statusDir, item.fileName)
         return file.exists()
     }
@@ -211,4 +211,3 @@ class FileSaver(private val context: Context) {
         return successCount
     }
 }
-

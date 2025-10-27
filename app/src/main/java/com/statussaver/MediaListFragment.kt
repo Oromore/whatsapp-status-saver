@@ -8,7 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import com.statussaver.core.FileSaver
 import com.statussaver.core.MediaItem
 import com.statussaver.core.StatusScanner
@@ -30,6 +30,17 @@ class MediaListFragment : Fragment() {
                     putString(ARG_MEDIA_TYPE, mediaType)
                 }
             }
+        }
+        
+        /**
+         * Calculate span count based on screen width
+         * Mobile: 2 columns
+         * Tablet: 3 columns
+         */
+        private fun getSpanCount(context: android.content.Context): Int {
+            val displayMetrics = context.resources.displayMetrics
+            val dpWidth = displayMetrics.widthPixels / displayMetrics.density
+            return if (dpWidth >= 600) 3 else 2  // Tablet: 3 columns, Phone: 2 columns
         }
     }
 
@@ -93,8 +104,10 @@ class MediaListFragment : Fragment() {
             }
         )
 
+        // Use GridLayoutManager instead of LinearLayoutManager
+        val spanCount = getSpanCount(requireContext())
         binding.recyclerView.apply {
-            layoutManager = LinearLayoutManager(requireContext())
+            layoutManager = GridLayoutManager(requireContext(), spanCount)
             adapter = this@MediaListFragment.adapter
         }
     }

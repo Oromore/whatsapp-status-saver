@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tablet-optimized dimensions (for screens ≥ 600dp width) -->
+    
+    <!-- Text Sizes -->
+    <dimen name="main_title_size">36sp</dimen>
+    <dimen name="main_subtitle_size">18sp</dimen>
+    <dimen name="status_count_size">20sp</dimen>
+    <dimen name="category_emoji_size">80sp</dimen>
+    <dimen name="category_title_size">28sp</dimen>
+    <dimen name="category_count_size">16sp</dimen>
+    <dimen name="toolbar_title_size">24sp</dimen>
+    <dimen name="empty_emoji_size">96sp</dimen>
+    <dimen name="empty_text_size">24sp</dimen>
+    <dimen name="empty_subtext_size">16sp</dimen>
+    
+    <!-- Paddings & Margins -->
+    <dimen name="header_padding">32dp</dimen>
+    <dimen name="card_padding">32dp</dimen>
+    <dimen name="screen_padding">28dp</dimen>
+    <dimen name="card_margin">12dp</dimen>
+    <dimen name="item_padding">12dp</dimen>
+    
+    <!-- Card Dimensions -->
+    <dimen name="card_corner_radius">20dp</dimen>
+    <dimen name="card_elevation">6dp</dimen>
+    <dimen name="thumbnail_height">320dp</dimen>
+    
+    <!-- Button Dimensions -->
+    <dimen name="button_height">64dp</dimen>
+    <dimen name="button_text_size">18sp</dimen>
+    <dimen name="button_corner_radius">16dp</dimen>
+    
+    <!-- Media Item Dimensions -->
+    <dimen name="media_file_name_size">16sp</dimen>
+    <dimen name="media_file_size_text">14sp</dimen>
+    <dimen name="play_icon_size">80dp</dimen>
+    
+    <!-- Spacing -->
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">16dp</dimen>
+    <dimen name="spacing_large">24dp</dimen>
+    <dimen name="spacing_xlarge">32dp</dimen>
+</resources>

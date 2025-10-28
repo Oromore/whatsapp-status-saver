@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.statussaver"
+    namespace = "com.statussaver2026"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.statussaver.wa"  // CHANGED: removed whatsapp
+        applicationId = "com.statussaver2026"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
@@ -16,8 +16,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // CHANGED: Updated app name
-        setProperty("archivesBaseName", "WA-Status-Saver")
+        setProperty("archivesBaseName", "Status-Saver-2026")
     }
 
     // Signing configuration for release builds
@@ -45,13 +44,11 @@ android {
         }
     }
 
-    // CHANGED: Updated APK naming
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = defaultConfig.versionName
-            // Format: WA-Status-Saver-v1.0.apk
-            output.outputFileName = "WA-Status-Saver-v${versionName}.apk"
+            output.outputFileName = "Status-Saver-2026-v${versionName}.apk"
         }
     }
 

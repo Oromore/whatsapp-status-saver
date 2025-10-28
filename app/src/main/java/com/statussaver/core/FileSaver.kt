@@ -18,7 +18,7 @@ class FileSaver(private val context: Context) {
     private val TAG = "FileSaver"
 
     /**
-     * Main function: Saves a media item to Downloads/WAStatus/
+     * Main function: Saves a media item to Downloads/Status/
      * Returns: Success or failure
      */
     fun saveToDownloads(item: MediaItem): Boolean {
@@ -54,7 +54,7 @@ class FileSaver(private val context: Context) {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, item.fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, getMimeType(item.type))
                 put(MediaStore.MediaColumns.RELATIVE_PATH,
-                    "${Environment.DIRECTORY_DOWNLOADS}/WAStatus")
+                    "${Environment.DIRECTORY_DOWNLOADS}/Status")
             }
 
             val collection = when (item.type) {
@@ -103,7 +103,7 @@ class FileSaver(private val context: Context) {
                 return false
             }
 
-            val statusDir = File(downloadsDir, "WAStatus")
+            val statusDir = File(downloadsDir, "Status")
             Log.d(TAG, "Status directory: ${statusDir.absolutePath}")
 
             // Create folder if it doesn't exist
@@ -192,7 +192,7 @@ class FileSaver(private val context: Context) {
         val downloadsDir = Environment.getExternalStoragePublicDirectory(
             Environment.DIRECTORY_DOWNLOADS
         )
-        val statusDir = File(downloadsDir, "WAStatus")
+        val statusDir = File(downloadsDir, "Status")
         val file = File(statusDir, item.fileName)
         return file.exists()
     }

@@ -149,7 +149,7 @@ class MediaListFragment : Fragment() {
 
             withContext(Dispatchers.Main) {
                 if (success) {
-                    Toast.makeText(requireContext(), "Saved to Downloads/WAStatus!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "Saved to Downloads/Status!", Toast.LENGTH_LONG).show()
 
                     // Track save for interstitial
                     interstitialAdManager.trackSave()

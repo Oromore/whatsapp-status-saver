@@ -13,6 +13,8 @@ import com.statussaver.databinding.FragmentChatBinding
 class ChatFragment : Fragment() {
 
     companion object {
+        private const val REQUEST_PICK_MEDIA = 1001
+        
         fun newInstance(): ChatFragment {
             return ChatFragment()
         }
@@ -34,7 +36,7 @@ class ChatFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupToolbar()
-        setupSendButton()
+        setupButtons()
     }
 
     private fun setupToolbar() {
@@ -45,7 +47,7 @@ class ChatFragment : Fragment() {
         }
     }
 
-    private fun setupSendButton() {
+    private fun setupButtons() {
         binding.btnSend.setOnClickListener {
             sendMessage()
         }
@@ -174,14 +176,6 @@ class ChatFragment : Fragment() {
                     Toast.makeText(requireContext(), "Error sharing media", Toast.LENGTH_SHORT).show()
                 }
             }
-        }
-    }
-
-    companion object {
-        private const val REQUEST_PICK_MEDIA = 1001
-        
-        fun newInstance(): ChatFragment {
-            return ChatFragment()
         }
     }
 

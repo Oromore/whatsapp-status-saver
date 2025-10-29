@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.statussaver"
+    namespace = "com.statussave"  // CHANGED: from com.statussaver to com.statussave
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.statussaver"  // CHANGED: completely generic
+        applicationId = "com.statussave"  // CHANGED: from com.statussaver to com.statussave
         minSdk = 23
         targetSdk = 34
         versionCode = 1
@@ -16,7 +16,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // CHANGED: Updated app name
+        // Updated app name
         setProperty("archivesBaseName", "Status-Saver")
     }
 
@@ -45,7 +45,7 @@ android {
         }
     }
 
-    // CHANGED: Updated APK naming
+    // Updated APK naming
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl

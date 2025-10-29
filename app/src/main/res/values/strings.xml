@@ -7,11 +7,30 @@
     <string name="category_images">Images</string>
     <string name="category_videos">Videos</string>
     <string name="category_audio">Audio</string>
+    <string name="category_chat">Chat</string>
+    <string name="send_message">Send Message</string>
     <string name="no_statuses_found">No statuses found</string>
     <string name="view_someones_status">View someone\'s status first, then come back here</string>
     <string name="permission_required">Storage Permission Required</string>
     <string name="permission_message">This app needs storage permission to access statuses</string>
     <string name="grant_permission">Grant Permission</string>
+
+    <!-- Chat Activity -->
+    <string name="send_whatsapp_message">Send WhatsApp Message</string>
+    <string name="chat_subtitle">Send a message without saving contact</string>
+    <string name="phone_number_label">Phone Number</string>
+    <string name="phone_number_hint">+1234567890</string>
+    <string name="phone_number_example">Include country code (e.g., +1 for US, +234 for Nigeria)</string>
+    <string name="message_label">Your Message</string>
+    <string name="message_hint">Type your message here...</string>
+    <string name="send_message_button">Send Message</string>
+    <string name="enter_phone_number">Please enter a phone number</string>
+    <string name="enter_message">Please enter a message</string>
+    <string name="invalid_phone_number">Please enter a valid phone number</string>
+    <string name="opening_whatsapp">Opening WhatsApp...</string>
+    <string name="whatsapp_not_installed">WhatsApp is not installed on your device</string>
+    <string name="error_opening_whatsapp">Error opening WhatsApp</string>
+    <string name="chat_info">This will open WhatsApp with your message ready to send</string>
 
     <!-- Media List Activity -->
     <string name="no_items">No %s found</string>

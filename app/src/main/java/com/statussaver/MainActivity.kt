@@ -1,6 +1,7 @@
 package com.statussaver
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -73,6 +74,13 @@ class MainActivity : AppCompatActivity() {
         binding.btnAudio.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
             showMediaFragment("AUDIO")
+        }
+
+        // NEW: Chat button click listener
+        binding.btnChat.setOnClickListener {
+            interstitialAdManager.trackAppInteraction()
+            val intent = Intent(this, ChatActivity::class.java)
+            startActivity(intent)
         }
     }
 
@@ -220,13 +228,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         Log.d(TAG, "=== onDestroy ===")
-        
+
         // Only destroy banner if activity is finishing (app closing)
         if (isFinishing) {
             Log.d(TAG, "App closing - destroying banner")
             bannerAdManager.destroy()
         }
-        
+
         super.onDestroy()
     }
 }

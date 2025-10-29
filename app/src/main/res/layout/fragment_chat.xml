@@ -157,6 +157,7 @@
                 android:id="@+id/btnSend"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
+                android:layout_marginBottom="16dp"
                 android:text="@string/send_message_button"
                 android:textSize="16sp"
                 android:textStyle="bold"
@@ -166,16 +167,19 @@
                 app:iconGravity="textStart"
                 app:iconTint="@color/text_white" />
 
-            <!-- Info Text -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="16dp"
-                android:text="@string/chat_info"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:gravity="center" />
+            <!-- Update Status/Story Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUpdateStatus"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="@string/update_status_button"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/whatsapp_teal"
+                app:cornerRadius="12dp"
+                app:icon="@android:drawable/ic_menu_gallery"
+                app:iconGravity="textStart"
+                app:iconTint="@color/text_white" />
 
         </LinearLayout>
     </ScrollView>

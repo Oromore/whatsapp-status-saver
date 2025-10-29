@@ -24,13 +24,13 @@
     <string name="message_label">Your Message</string>
     <string name="message_hint">Type your message here...</string>
     <string name="send_message_button">Send Message</string>
+    <string name="update_status_button">Update Status/Story</string>
     <string name="enter_phone_number">Please enter a phone number</string>
     <string name="enter_message">Please enter a message</string>
     <string name="invalid_phone_number">Please enter a valid phone number</string>
     <string name="opening_whatsapp">Opening messaging app...</string>
     <string name="whatsapp_not_installed">Messaging app is not installed on your device</string>
     <string name="error_opening_whatsapp">Error opening messaging app</string>
-    <string name="chat_info">This will open your messaging app with your message ready to send</string>
 
     <!-- Media List Activity -->
     <string name="no_items">No %s found</string>

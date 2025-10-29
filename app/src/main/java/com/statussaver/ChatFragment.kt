@@ -49,6 +49,10 @@ class ChatFragment : Fragment() {
         binding.btnSend.setOnClickListener {
             sendMessage()
         }
+        
+        binding.btnUpdateStatus.setOnClickListener {
+            updateStatus()
+        }
     }
 
     private fun sendMessage() {
@@ -110,6 +114,74 @@ class ChatFragment : Fragment() {
             
         } catch (e: Exception) {
             Toast.makeText(requireContext(), getString(R.string.error_opening_whatsapp), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateStatus() {
+        try {
+            // Create intent to pick media (image, video)
+            val intent = Intent(Intent.ACTION_PICK)
+            intent.type = "image/* video/*"
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
+            
+            // Try to open WhatsApp status directly
+            val whatsappIntent = Intent(Intent.ACTION_SEND)
+            whatsappIntent.type = "image/*"
+            whatsappIntent.setPackage("com.whatsapp")
+            
+            if (whatsappIntent.resolveActivity(requireActivity().packageManager) != null) {
+                // If WhatsApp is installed, let user pick media
+                startActivityForResult(intent, REQUEST_PICK_MEDIA)
+            } else {
+                // Try WhatsApp Business
+                whatsappIntent.setPackage("com.whatsapp.w4b")
+                if (whatsappIntent.resolveActivity(requireActivity().packageManager) != null) {
+                    startActivityForResult(intent, REQUEST_PICK_MEDIA)
+                } else {
+                    Toast.makeText(requireContext(), getString(R.string.whatsapp_not_installed), Toast.LENGTH_LONG).show()
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Error selecting media", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == REQUEST_PICK_MEDIA && resultCode == android.app.Activity.RESULT_OK) {
+            data?.data?.let { uri ->
+                // Share to WhatsApp Status
+                try {
+                    val shareIntent = Intent(Intent.ACTION_SEND)
+                    shareIntent.type = requireActivity().contentResolver.getType(uri)
+                    shareIntent.putExtra(Intent.EXTRA_STREAM, uri)
+                    shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    shareIntent.setPackage("com.whatsapp")
+                    
+                    if (shareIntent.resolveActivity(requireActivity().packageManager) != null) {
+                        startActivity(Intent.createChooser(shareIntent, "Share to Status"))
+                    } else {
+                        // Try WhatsApp Business
+                        shareIntent.setPackage("com.whatsapp.w4b")
+                        if (shareIntent.resolveActivity(requireActivity().packageManager) != null) {
+                            startActivity(Intent.createChooser(shareIntent, "Share to Status"))
+                        } else {
+                            Toast.makeText(requireContext(), getString(R.string.whatsapp_not_installed), Toast.LENGTH_LONG).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Error sharing media", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    companion object {
+        private const val REQUEST_PICK_MEDIA = 1001
+        
+        fun newInstance(): ChatFragment {
+            return ChatFragment()
         }
     }
 

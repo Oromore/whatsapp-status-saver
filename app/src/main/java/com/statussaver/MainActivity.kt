@@ -79,8 +79,7 @@ class MainActivity : AppCompatActivity() {
         // NEW: Chat button click listener
         binding.btnChat.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
-            val intent = Intent(this, ChatActivity::class.java)
-            startActivity(intent)
+            showChatFragment()
         }
     }
 
@@ -94,6 +93,21 @@ class MainActivity : AppCompatActivity() {
 
         // Show fragment in fragmentContainer
         val fragment = MediaListFragment.newInstance(mediaType)
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
+            .commit()
+    }
+
+    private fun showChatFragment() {
+        Log.d(TAG, "Showing Chat fragment")
+
+        // Hide ONLY the header and home content (NOT the ad container!)
+        binding.header.visibility = View.GONE
+        binding.homeContent.visibility = View.GONE
+        // Ad container ALWAYS stays visible - never touch it!
+
+        // Show fragment in fragmentContainer
+        val fragment = ChatFragment.newInstance()
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
             .commit()

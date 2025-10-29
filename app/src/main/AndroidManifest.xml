@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.statussave">
-    <!-- CHANGED: package from com.statussaver to com.statussave -->
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Permissions for accessing status files -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"

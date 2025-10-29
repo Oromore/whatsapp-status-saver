@@ -4,20 +4,20 @@ plugins {
 }
 
 android {
-    namespace = "com.statussave"  // CHANGED: from com.statussaver to com.statussave
+    namespace = "com.statussaver"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.statussave"  // CHANGED: from com.statussaver to com.statussave
+        applicationId = "com.statussave.app"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
+        
         // Updated app name
-        setProperty("archivesBaseName", "Status-Saver")
+        setProperty("archivesBaseName", "Status-Saver-2026")
     }
 
     // Signing configuration for release builds
@@ -39,7 +39,6 @@ android {
                 "proguard-rules.pro"
             )
         }
-
         debug {
             applicationIdSuffix = ".debug"
         }
@@ -50,8 +49,8 @@ android {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = defaultConfig.versionName
-            // Format: Status-Saver-v1.0.apk
-            output.outputFileName = "Status-Saver-v${versionName}.apk"
+            // Format: Status-Saver-2026-v1.0.apk
+            output.outputFileName = "Status-Saver-2026-v${versionName}.apk"
         }
     }
 

@@ -130,7 +130,7 @@ class MediaListFragment : Fragment() {
                         adapter.submitList(mediaList)
                     } else {
                         binding.emptyState.visibility = View.VISIBLE
-                        binding.emptyText.text = "No ${mediaType.lowercase()} found"
+                        binding.emptyText.text = getString(R.string.no_status_instruction)
                     }
                 }
             } catch (e: Exception) {

@@ -8,14 +8,14 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.statussave.app"
+        applicationId = "com.whatsappstatusdownloader.app"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         // Updated app name
         setProperty("archivesBaseName", "Status-Saver-2026")
     }

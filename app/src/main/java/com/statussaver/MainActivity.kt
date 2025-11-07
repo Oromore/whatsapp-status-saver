@@ -1,11 +1,14 @@
 package com.statussaver
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +25,8 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val PREFS_NAME = "AppPrefs"
+        private const val KEY_FIRST_LAUNCH = "isFirstLaunch"
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -54,7 +59,12 @@ class MainActivity : AppCompatActivity() {
 
         // Check permissions and load statuses
         if (checkPermissions()) {
-            loadStatuses()
+            // Permissions granted, check if we need to show privacy policy
+            if (isFirstLaunch()) {
+                showPrivacyPolicyDialog()
+            } else {
+                loadStatuses()
+            }
         } else {
             requestPermissions()
         }
@@ -74,6 +84,36 @@ class MainActivity : AppCompatActivity() {
             interstitialAdManager.trackAppInteraction()
             showMediaFragment("AUDIO")
         }
+    }
+
+    private fun isFirstLaunch(): Boolean {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_FIRST_LAUNCH, true)
+    }
+
+    private fun setFirstLaunchComplete() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply()
+    }
+
+    private fun showPrivacyPolicyDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_privacy_policy, null)
+        val privacyTextView = dialogView.findViewById<TextView>(R.id.privacyPolicyText)
+        
+        // Make TextView scrollable
+        privacyTextView.movementMethod = ScrollingMovementMethod()
+        privacyTextView.text = getString(R.string.privacy_policy_content)
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.privacy_policy_title))
+            .setView(dialogView)
+            .setCancelable(false)
+            .setPositiveButton(getString(R.string.privacy_continue)) { dialog, _ ->
+                dialog.dismiss()
+                setFirstLaunchComplete()
+                loadStatuses()
+            }
+            .show()
     }
 
     private fun showMediaFragment(mediaType: String) {
@@ -158,7 +198,12 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                loadStatuses()
+                // Permissions granted, check if first launch
+                if (isFirstLaunch()) {
+                    showPrivacyPolicyDialog()
+                } else {
+                    loadStatuses()
+                }
             } else {
                 Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
                 showEmptyState()

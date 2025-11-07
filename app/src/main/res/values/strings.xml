@@ -18,6 +18,7 @@
     <string name="items_count">%d items</string>
     <string name="select_all">Select All</string>
     <string name="save_selected">Save Selected</string>
+    <string name="no_status_instruction">No Status. To save status, open your WhatsApp, View your status, then return here to save/download all of them</string>
 
     <!-- Media Viewer Activity -->
     <string name="save">Save</string>
@@ -25,6 +26,102 @@
     <string name="already_saved">Already Saved</string>
     <string name="save_failed">Save Failed</string>
     <string name="saving">Saving...</string>
+
+    <!-- Privacy Policy -->
+    <string name="privacy_policy_title">Privacy Policy</string>
+    <string name="privacy_continue">Continue</string>
+    <string name="privacy_policy_content">Privacy Policy for WhatsApp Status Downloader 2026
+
+Last Updated: November 7, 2025
+
+Introduction
+Welcome to WhatsApp Status Downloader 2026. This Privacy Policy explains how we handle information when you use our application. We are committed to protecting your privacy and being transparent about our practices.
+
+Information We Collect
+Information Collected by the App
+NONE. WhatsApp Status Downloader 2026 does not collect, store, or transmit any user data whatsoever. The app operates entirely on your device and does not send any information to us or any third parties.
+
+Information You Provide
+No Personal Information Required: Our app does not require you to create an account or provide any personal information to use its features.
+No Registration: The app can be used immediately without any sign-up process.
+
+Permissions We Request
+Storage Permission (READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE, READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, READ_MEDIA_AUDIO): Required to access WhatsApp status files on your device and save them to your Downloads folder. These permissions are used ONLY for local file access and no data is transmitted anywhere.
+
+How We Use Information
+We don't use any information because we don't collect any. The app operates entirely locally on your device to:
+Access WhatsApp status files stored on your device
+Save selected status files to your Downloads folder
+Display the app interface and functionality
+
+Data Storage and Security
+100% Local: All operations happen locally on your device. No data ever leaves your device.
+No Servers: We do not have any servers. We do not collect, store, or process any user data.
+No Cloud Storage: We do not upload or sync any of your data to the cloud.
+No Analytics: We do not track your usage or collect analytics data.
+Your Files Stay Yours: All media files remain on your device under your control.
+
+Third-Party Services
+Our app uses Unity Ads to display advertisements. Unity Ads is the ONLY third-party service in the app and may collect limited information:
+
+What Unity Ads May Collect:
+General Geographic Location: Country or region (NOT precise location)
+Ad Interaction Data: Whether you viewed or clicked on ads
+
+What Unity Ads Does NOT Collect:
+Personal identifiable information
+IP addresses
+Precise device details
+Your personal files or data
+Contacts or messages
+For more information about Unity Ads data practices, visit:
+
+Unity Ads Privacy Policy: https://unity.com/legal/privacy-policy
+
+You have the right to:
+Revoke Permissions: You can revoke storage permissions at any time through your device settings, though this will affect the App's functionality.
+Opt-Out of Personalized Ads: You can opt-out of personalized advertising through your device's ad settings.
+Delete Data: You can uninstall the App at any time. Since we don't collect any data, there's nothing stored on our end to delete.
+
+Children's Privacy
+Since we do not collect any personal information from anyone, we do not collect information from children.
+
+Changes to This Privacy Policy
+We may update this Privacy Policy from time to time. We will notify you of any changes by:
+Posting the new Privacy Policy in the App
+Updating the Last Updated date at the top of this policy
+Your continued use of the App after any changes indicates your acceptance of the updated Privacy Policy.
+
+Data Retention
+App Data: Since we collect no data, there is no data to retain.
+Local Files: Media files you save are stored locally on your device until you manually delete them.
+App Settings: App preferences are stored locally on your device and deleted when you uninstall the App.
+
+International Data Transfers
+The app itself does not transfer any data internationally because it doesn't collect any data. Unity Ads may process limited geographic information as described in their privacy policy.
+
+Your Consent
+By using WhatsApp Status Downloader 2026, you consent to this Privacy Policy and agree to its terms.
+
+Transparency Commitment
+We believe in complete transparency:
+
+✅ The app collects ZERO user data
+✅ All operations are local to your device
+✅ No servers or databases store your information
+✅ Only Unity Ads may collect limited geographic data for ad serving
+✅ Your files and privacy are completely protected
+
+Disclaimer
+WhatsApp Status Downloader 2026 is an independent application.
+
+Contact Us
+If you have any questions, concerns, or requests regarding this Privacy Policy or our privacy practices, please contact us at:
+
+Email: Davidemma005@gmail.com
+Developer: David Emma Ebinne
+
+By clicking OK or continuing to use the App, you acknowledge that you have read and understood this Privacy Policy.
 
     <!-- General -->
     <string name="ok">OK</string>

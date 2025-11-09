@@ -14,12 +14,12 @@ import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import com.statussaver.core.MediaItem
 import com.statussaver.core.MediaType
-import com.yandex.mobile.ads.common.AdRequest
 import com.yandex.mobile.ads.common.AdRequestError
 import com.yandex.mobile.ads.nativeads.NativeAd
 import com.yandex.mobile.ads.nativeads.NativeAdEventListener
 import com.yandex.mobile.ads.nativeads.NativeAdLoadListener
 import com.yandex.mobile.ads.nativeads.NativeAdLoader
+import com.yandex.mobile.ads.nativeads.NativeAdRequestConfiguration
 import com.yandex.mobile.ads.nativeads.NativeAdView
 import com.yandex.mobile.ads.nativeads.NativeAdViewBinder
 
@@ -76,7 +76,6 @@ class MediaAdapter(
 
         Log.d(TAG, "Loading native ad for position $position")
 
-        val adRequest = AdRequest.Builder().build()
         val nativeAdLoader = NativeAdLoader(context)
 
         nativeAdLoader.setNativeAdLoadListener(object : NativeAdLoadListener {
@@ -104,9 +103,12 @@ class MediaAdapter(
             }
         })
 
-        nativeAdLoader.loadAd(NativeAdLoader.NativeAdRequestConfiguration.Builder(AD_UNIT_ID)
+        // Create NativeAdRequestConfiguration with proper API
+        val adRequestConfiguration = NativeAdRequestConfiguration.Builder(AD_UNIT_ID)
             .setShouldLoadImagesAutomatically(true)
-            .build())
+            .build()
+
+        nativeAdLoader.loadAd(adRequestConfiguration)
     }
 
     override fun getItemViewType(position: Int): Int {

@@ -63,9 +63,14 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
             bannerAdView?.destroy()
             container?.removeAllViews()
 
+            // Calculate banner width in dp
+            val displayMetrics = activity.resources.displayMetrics
+            val screenWidthDp = (displayMetrics.widthPixels / displayMetrics.density).toInt()
+
             bannerAdView = BannerAdView(activity).apply {
                 setAdUnitId(AD_UNIT_ID)
-                setAdSize(BannerAdSize.stickySize(320)) // 320x50 sticky banner
+                // BannerAdSize.stickySize requires (Context, width in dp)
+                setAdSize(BannerAdSize.stickySize(activity, screenWidthDp))
                 setBannerAdEventListener(this@BannerAdManager)
             }
 
@@ -75,7 +80,7 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
             bannerAdView?.loadAd(adRequest)
             isLoaded = false
 
-            Log.d(TAG, "Banner loadAd() called")
+            Log.d(TAG, "Banner loadAd() called with width: ${screenWidthDp}dp")
         } catch (e: Exception) {
             Log.e(TAG, "Error creating banner", e)
             scheduleRetry()

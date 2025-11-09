@@ -105,7 +105,8 @@ class MediaListFragment : Fragment() {
                 // Make native ads span full width
                 spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                     override fun getSpanSize(position: Int): Int {
-                        return when (adapter.getItemViewType(position)) {
+                        // Safe access with null check
+                        return when (adapter?.getItemViewType(position)) {
                             1 -> spanCount // Native ad takes full width
                             else -> 1 // Media items take 1 column
                         }

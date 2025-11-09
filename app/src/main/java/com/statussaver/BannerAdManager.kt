@@ -6,17 +6,17 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
-import com.yandex.mobile.ads.banner.AdSize
+import com.yandex.mobile.ads.banner.BannerAdSize
 import com.yandex.mobile.ads.banner.BannerAdEventListener
 import com.yandex.mobile.ads.banner.BannerAdView
-import com.yandex.mobile.ads.common.AdRequestConfiguration
+import com.yandex.mobile.ads.common.AdRequest
 import com.yandex.mobile.ads.common.AdRequestError
 import com.yandex.mobile.ads.common.ImpressionData
 
 /**
  * Yandex Banner Ad Manager
  * Ad Unit ID: R-M-17685522-2
- * 
+ *
  * Permanent bottom banner with health check
  */
 class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
@@ -65,17 +65,17 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
 
             bannerAdView = BannerAdView(activity).apply {
                 setAdUnitId(AD_UNIT_ID)
-                setAdSize(AdSize.stickySize(320)) // 320x50 banner
+                setAdSize(BannerAdSize.stickySize(320)) // 320x50 sticky banner
                 setBannerAdEventListener(this@BannerAdManager)
             }
 
             container?.addView(bannerAdView)
 
-            val adRequest = AdRequestConfiguration.Builder(AD_UNIT_ID).build()
+            val adRequest = AdRequest.Builder().build()
             bannerAdView?.loadAd(adRequest)
             isLoaded = false
 
-            Log.d(TAG, "Banner load() called")
+            Log.d(TAG, "Banner loadAd() called")
         } catch (e: Exception) {
             Log.e(TAG, "Error creating banner", e)
             scheduleRetry()
@@ -129,7 +129,6 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
     }
 
     // ========== BannerAdEventListener ==========
-
     override fun onAdLoaded() {
         Log.d(TAG, "✓ Banner loaded")
         isLoaded = true

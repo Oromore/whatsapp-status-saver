@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.statussaver.databinding.ActivitySplashBinding
 
 /**
- * Splash screen that displays while Unity Ads initializes
+ * Splash screen that displays while Yandex Ads initializes
  * Shows app icon with fade-in animation, then navigates to MainActivity
  */
 class SplashActivity : AppCompatActivity() {
@@ -39,13 +39,13 @@ class SplashActivity : AppCompatActivity() {
         // Start fade-in animation for logo
         animateLogo()
 
-        // Wait for Unity Ads initialization
-        UnityAdsManager.onReady {
-            Log.d(TAG, "Unity Ads ready in splash screen")
+        // Wait for Yandex Ads initialization (Unity loads automatically as adapter)
+        YandexAdsManager.onReady {
+            Log.d(TAG, "Yandex Ads ready (Unity adapter loaded)")
             navigateToMainWithDelay()
         }
 
-        // Fallback: Navigate after max time even if Unity Ads not ready
+        // Fallback: Navigate after max time even if Yandex Ads not ready
         handler.postDelayed({
             if (!hasNavigated) {
                 Log.d(TAG, "Max splash time reached - navigating anyway")

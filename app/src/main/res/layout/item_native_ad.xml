@@ -149,11 +149,14 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <com.yandex.mobile.ads.nativeads.rating.RatingView
+            <!-- FIXED: Changed from RatingView to TextView -->
+            <TextView
                 android:id="@+id/ratingView"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:visibility="gone"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 

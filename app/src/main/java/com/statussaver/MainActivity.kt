@@ -49,17 +49,16 @@ class MainActivity : AppCompatActivity() {
         bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
 
-        // Wait for Unity Ads ready, then load PERMANENT banner
-        UnityAdsManager.onReady {
-            Log.d(TAG, "Unity Ads ready - loading PERMANENT banner")
+        // Load banner when Yandex is ready
+        YandexAdsManager.onReady {
+            Log.d(TAG, "Yandex ready - loading banner")
             runOnUiThread {
                 bannerAdManager.loadBanner(binding.adContainer)
             }
         }
 
-        // Check permissions and load statuses
+        // Check permissions
         if (checkPermissions()) {
-            // Permissions granted, check if we need to show privacy policy
             if (isFirstLaunch()) {
                 showPrivacyPolicyDialog()
             } else {
@@ -69,7 +68,7 @@ class MainActivity : AppCompatActivity() {
             requestPermissions()
         }
 
-        // Set up click listeners - switch to fragments instead of new activities
+        // Button click listeners
         binding.btnImages.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
             showMediaFragment("IMAGE")
@@ -99,8 +98,7 @@ class MainActivity : AppCompatActivity() {
     private fun showPrivacyPolicyDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_privacy_policy, null)
         val privacyTextView = dialogView.findViewById<TextView>(R.id.privacyPolicyText)
-        
-        // Make TextView scrollable
+
         privacyTextView.movementMethod = ScrollingMovementMethod()
         privacyTextView.text = getString(R.string.privacy_policy_content)
 
@@ -119,12 +117,9 @@ class MainActivity : AppCompatActivity() {
     private fun showMediaFragment(mediaType: String) {
         Log.d(TAG, "Showing $mediaType fragment")
 
-        // Hide ONLY the header and home content (NOT the ad container!)
         binding.header.visibility = View.GONE
         binding.homeContent.visibility = View.GONE
-        // Ad container ALWAYS stays visible - never touch it!
 
-        // Show fragment in fragmentContainer
         val fragment = MediaListFragment.newInstance(mediaType)
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
@@ -134,17 +129,13 @@ class MainActivity : AppCompatActivity() {
     fun showHomeScreen() {
         Log.d(TAG, "Showing home screen")
 
-        // Remove fragment
         supportFragmentManager.fragments.forEach {
             supportFragmentManager.beginTransaction().remove(it).commit()
         }
 
-        // Show header and home screen again
         binding.header.visibility = View.VISIBLE
         binding.homeContent.visibility = View.VISIBLE
-        // Ad container ALWAYS stays visible!
 
-        // Reload status counts
         if (checkPermissions()) {
             loadStatuses()
         }
@@ -152,12 +143,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         } else {
-            // Android 12 and below
             val readPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
             val writePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
             readPermission && writePermission
@@ -198,7 +187,6 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                // Permissions granted, check if first launch
                 if (isFirstLaunch()) {
                     showPrivacyPolicyDialog()
                 } else {
@@ -253,12 +241,11 @@ class MainActivity : AppCompatActivity() {
         binding.statusCount.text = ""
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        // If fragment is showing, go back to home
         if (supportFragmentManager.fragments.isNotEmpty()) {
             showHomeScreen()
         } else {
-            // Otherwise, exit app
             super.onBackPressed()
         }
     }
@@ -266,7 +253,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         Log.d(TAG, "=== onDestroy ===")
 
-        // Only destroy banner if activity is finishing (app closing)
         if (isFinishing) {
             Log.d(TAG, "App closing - destroying banner")
             bannerAdManager.destroy()

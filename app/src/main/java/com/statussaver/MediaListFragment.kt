@@ -32,15 +32,10 @@ class MediaListFragment : Fragment() {
             }
         }
 
-        /**
-         * Calculate span count based on screen width
-         * Mobile: 2 columns
-         * Tablet: 3 columns
-         */
         private fun getSpanCount(context: android.content.Context): Int {
             val displayMetrics = context.resources.displayMetrics
             val dpWidth = displayMetrics.widthPixels / displayMetrics.density
-            return if (dpWidth >= 600) 3 else 2  // Tablet: 3 columns, Phone: 2 columns
+            return if (dpWidth >= 600) 3 else 2
         }
     }
 
@@ -71,7 +66,6 @@ class MediaListFragment : Fragment() {
         fileSaver = FileSaver(requireContext())
         interstitialAdManager = InterstitialAdManager(requireActivity())
 
-        // Get media type from arguments
         mediaType = arguments?.getString(ARG_MEDIA_TYPE) ?: "IMAGE"
         Log.d(TAG, "Media type: $mediaType")
 
@@ -89,13 +83,14 @@ class MediaListFragment : Fragment() {
         }
         binding.toolbar.title = title
         binding.toolbar.setNavigationOnClickListener {
-            // Go back to home screen
             (activity as? MainActivity)?.showHomeScreen()
         }
     }
 
     private fun setupRecyclerView() {
+        // Updated adapter - now includes Context for native ad loading
         adapter = MediaAdapter(
+            context = requireContext(),
             onSaveClick = { item ->
                 saveMedia(item)
             },
@@ -104,10 +99,19 @@ class MediaListFragment : Fragment() {
             }
         )
 
-        // Use GridLayoutManager instead of LinearLayoutManager
         val spanCount = getSpanCount(requireContext())
         binding.recyclerView.apply {
-            layoutManager = GridLayoutManager(requireContext(), spanCount)
+            layoutManager = GridLayoutManager(requireContext(), spanCount).apply {
+                // Make native ads span full width
+                spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                    override fun getSpanSize(position: Int): Int {
+                        return when (adapter.getItemViewType(position)) {
+                            1 -> spanCount // Native ad takes full width
+                            else -> 1 // Media items take 1 column
+                        }
+                    }
+                }
+            }
             adapter = this@MediaListFragment.adapter
         }
     }
@@ -127,7 +131,7 @@ class MediaListFragment : Fragment() {
 
                     if (mediaList.isNotEmpty()) {
                         binding.recyclerView.visibility = View.VISIBLE
-                        adapter.submitList(mediaList)
+                        adapter.setMediaItems(mediaList) // Use setMediaItems instead of submitList
                     } else {
                         binding.emptyState.visibility = View.VISIBLE
                         binding.emptyText.text = getString(R.string.no_status_instruction)
@@ -150,8 +154,6 @@ class MediaListFragment : Fragment() {
             withContext(Dispatchers.Main) {
                 if (success) {
                     Toast.makeText(requireContext(), "Saved to Downloads/Status!", Toast.LENGTH_LONG).show()
-
-                    // Track save for interstitial
                     interstitialAdManager.trackSave()
                 } else {
                     Toast.makeText(requireContext(), "Failed to save", Toast.LENGTH_LONG).show()

@@ -6,270 +6,161 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
-import com.unity3d.services.banners.BannerErrorInfo
-import com.unity3d.services.banners.BannerView
-import com.unity3d.services.banners.UnityBannerSize
+import com.yandex.mobile.ads.banner.AdSize
+import com.yandex.mobile.ads.banner.BannerAdEventListener
+import com.yandex.mobile.ads.banner.BannerAdView
+import com.yandex.mobile.ads.common.AdRequestConfiguration
+import com.yandex.mobile.ads.common.AdRequestError
+import com.yandex.mobile.ads.common.ImpressionData
 
 /**
- * PERMANENT Banner Manager - ONE reliable instance that never dies
- * - Loads once when Unity is ready
- * - Health check every 5 seconds to verify banner is alive
- * - Auto-reloads if banner disappears or fails
- * - Survives network issues and Unity refresh failures
+ * Yandex Banner Ad Manager
+ * Ad Unit ID: R-M-17685522-2
+ * 
+ * Permanent bottom banner with health check
  */
-class BannerAdManager(private val activity: Activity) : BannerView.IListener {
+class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
 
     companion object {
         private const val TAG = "BannerAdManager"
-        private const val BANNER_AD_UNIT_ID = "WhatsApp_status_saver_banner"
-        private const val BASE_RETRY_DELAY_MS = 2000L // Base retry delay: 2 seconds
-        private const val MAX_RETRY_DELAY_MS = 10000L // Max retry delay: 10 seconds
-        private const val HEALTH_CHECK_INTERVAL_MS = 2000L // Check health every 2 seconds
-        private const val MAX_RETRIES = -1 // Unlimited retries - NEVER GIVE UP!
+        private const val AD_UNIT_ID = "R-M-17685522-2"
+        private const val RETRY_DELAY_MS = 2000L
+        private const val HEALTH_CHECK_INTERVAL_MS = 5000L
     }
 
-    private var bannerView: BannerView? = null
+    private var bannerAdView: BannerAdView? = null
     private var container: FrameLayout? = null
-    private var retryCount = 0
     private var isLoaded = false
     private var isDestroyed = false
 
     private val retryHandler = Handler(Looper.getMainLooper())
     private val healthCheckHandler = Handler(Looper.getMainLooper())
 
-    private var retryRunnable: Runnable? = null
-    private var healthCheckRunnable: Runnable? = null
-
-    /**
-     * Initialize and load banner - call this ONCE when Unity is ready
-     * Banner stays alive forever after this
-     */
     fun loadBanner(adContainer: FrameLayout) {
-        Log.d(TAG, "=== LOADING PERMANENT BANNER ===")
+        Log.d(TAG, "=== LOADING BANNER ===")
 
-        if (isDestroyed) {
-            Log.w(TAG, "BannerAdManager is destroyed - cannot load")
-            return
-        }
+        if (isDestroyed) return
 
         container = adContainer
         container?.visibility = View.VISIBLE
 
-        // Don't reload if already exists and loaded
-        if (bannerView != null && isLoaded) {
-            Log.d(TAG, "Banner already exists and active")
+        if (bannerAdView != null && isLoaded) {
+            Log.d(TAG, "Banner already active")
             return
         }
 
-        // Create banner
-        createBanner()
+        YandexAdsManager.onReady {
+            activity.runOnUiThread { createBanner() }
+        }
     }
 
     private fun createBanner() {
-        Log.d(TAG, "Creating banner (attempt ${retryCount + 1})")
+        Log.d(TAG, "Creating banner")
 
-        if (isDestroyed) {
-            Log.w(TAG, "BannerAdManager is destroyed - aborting create")
-            return
-        }
+        if (isDestroyed) return
 
         try {
-            // Clean up old banner if exists
-            bannerView?.destroy()
+            bannerAdView?.destroy()
             container?.removeAllViews()
 
-            // Create new banner
-            bannerView = BannerView(activity, BANNER_AD_UNIT_ID, UnityBannerSize(320, 50))
-            bannerView?.setListener(this)
+            bannerAdView = BannerAdView(activity).apply {
+                setAdUnitId(AD_UNIT_ID)
+                setAdSize(AdSize.stickySize(320)) // 320x50 banner
+                setBannerAdEventListener(this@BannerAdManager)
+            }
 
-            container?.addView(bannerView)
+            container?.addView(bannerAdView)
 
-            // Load the banner
-            bannerView?.load()
+            val adRequest = AdRequestConfiguration.Builder(AD_UNIT_ID).build()
+            bannerAdView?.loadAd(adRequest)
             isLoaded = false
 
             Log.d(TAG, "Banner load() called")
         } catch (e: Exception) {
-            Log.e(TAG, "Exception creating banner", e)
+            Log.e(TAG, "Error creating banner", e)
             scheduleRetry()
         }
     }
 
     private fun scheduleRetry() {
-        if (isDestroyed) {
-            return
-        }
+        if (isDestroyed) return
 
-        // Unlimited retries - never give up!
-        retryCount++
-        
-        // Calculate exponential backoff delay: 2s, 4s, 6s, 8s, 10s, then reset
-        val currentDelay = (BASE_RETRY_DELAY_MS * retryCount).coerceAtMost(MAX_RETRY_DELAY_MS)
-        
-        // Reset retry count if we've reached max delay (creates the cycle)
-        if (currentDelay >= MAX_RETRY_DELAY_MS) {
-            retryCount = 0
-        }
-        
-        Log.d(TAG, "Scheduling retry in ${currentDelay}ms (attempt $retryCount)")
-
-        cancelRetry()
-        retryRunnable = Runnable {
-            Log.d(TAG, "Retrying banner load...")
-            createBanner()
-        }
-
-        retryHandler.postDelayed(retryRunnable!!, currentDelay)
+        Log.d(TAG, "Scheduling retry in ${RETRY_DELAY_MS}ms")
+        retryHandler.postDelayed({ createBanner() }, RETRY_DELAY_MS)
     }
 
-    private fun cancelRetry() {
-        retryRunnable?.let {
-            retryHandler.removeCallbacks(it)
-            retryRunnable = null
-        }
-    }
-
-    /**
-     * Start health check - verifies banner is alive every 2 seconds
-     */
     private fun startHealthCheck() {
-        Log.d(TAG, "Starting health check (every ${HEALTH_CHECK_INTERVAL_MS}ms)")
+        Log.d(TAG, "Starting health check")
 
-        cancelHealthCheck()
-
-        healthCheckRunnable = object : Runnable {
+        healthCheckHandler.postDelayed(object : Runnable {
             override fun run() {
-                if (isDestroyed) {
-                    Log.d(TAG, "Health check stopped - manager destroyed")
-                    return
+                if (isDestroyed) return
+
+                if (bannerAdView == null || bannerAdView?.parent == null) {
+                    Log.w(TAG, "Health check failed - reloading")
+                    isLoaded = false
+                    createBanner()
+                } else {
+                    activity.runOnUiThread {
+                        bannerAdView?.visibility = View.VISIBLE
+                        container?.visibility = View.VISIBLE
+                    }
                 }
 
-                performHealthCheck()
-
-                // Schedule next health check
                 healthCheckHandler.postDelayed(this, HEALTH_CHECK_INTERVAL_MS)
             }
-        }
-
-        healthCheckHandler.postDelayed(healthCheckRunnable!!, HEALTH_CHECK_INTERVAL_MS)
+        }, HEALTH_CHECK_INTERVAL_MS)
     }
 
-    private fun performHealthCheck() {
-        Log.d(TAG, "=== HEALTH CHECK ===")
-
-        // Check if banner view still exists
-        if (bannerView == null) {
-            Log.w(TAG, "Health check FAILED: Banner view is null - reloading")
-            isLoaded = false
-            retryCount = 0
-            createBanner()
-            return
-        }
-
-        // Check if banner is attached to container
-        if (bannerView?.parent == null) {
-            Log.w(TAG, "Health check FAILED: Banner not attached to parent - reloading")
-            isLoaded = false
-            retryCount = 0
-            createBanner()
-            return
-        }
-
-        // Check if container is attached to window
-        if (container?.isAttachedToWindow == false) {
-            Log.w(TAG, "Health check WARNING: Container not attached to window")
-            return
-        }
-
-        // Check if banner is visible
-        if (bannerView?.visibility != View.VISIBLE) {
-            Log.w(TAG, "Health check FAILED: Banner not visible - making visible")
-            activity.runOnUiThread {
-                bannerView?.visibility = View.VISIBLE
-                container?.visibility = View.VISIBLE
-            }
-        }
-
-        // Check if container is visible
-        if (container?.visibility != View.VISIBLE) {
-            Log.w(TAG, "Health check FAILED: Container not visible - making visible")
-            activity.runOnUiThread {
-                container?.visibility = View.VISIBLE
-            }
-        }
-
-        Log.d(TAG, "Health check PASSED: Banner is alive and showing")
-    }
-
-    private fun cancelHealthCheck() {
-        healthCheckRunnable?.let {
-            healthCheckHandler.removeCallbacks(it)
-            healthCheckRunnable = null
-        }
-    }
-
-    /**
-     * Only call this when app is REALLY closing
-     */
     fun destroy() {
-        Log.d(TAG, "Destroying banner (app closing)")
-
+        Log.d(TAG, "Destroying banner")
         isDestroyed = true
         isLoaded = false
 
-        cancelRetry()
-        cancelHealthCheck()
+        retryHandler.removeCallbacksAndMessages(null)
+        healthCheckHandler.removeCallbacksAndMessages(null)
 
         container?.removeAllViews()
         container?.visibility = View.GONE
         container = null
 
-        bannerView?.destroy()
-        bannerView = null
+        bannerAdView?.destroy()
+        bannerAdView = null
     }
 
-    // ========== BannerView.IListener Callbacks ==========
+    // ========== BannerAdEventListener ==========
 
-    override fun onBannerLoaded(bannerAdView: BannerView?) {
-        Log.d(TAG, "=== BANNER LOADED SUCCESSFULLY ===")
-        Log.d(TAG, "Placement: ${bannerAdView?.placementId}")
-
-        // Reset retry count on success
-        retryCount = 0
+    override fun onAdLoaded() {
+        Log.d(TAG, "✓ Banner loaded")
         isLoaded = true
-        cancelRetry()
 
         activity.runOnUiThread {
             bannerAdView?.visibility = View.VISIBLE
             container?.visibility = View.VISIBLE
         }
 
-        // Start health monitoring AFTER successful load
         startHealthCheck()
     }
 
-    override fun onBannerFailedToLoad(bannerAdView: BannerView?, errorInfo: BannerErrorInfo?) {
-        Log.e(TAG, "=== BANNER FAILED TO LOAD ===")
-        Log.e(TAG, "Placement: ${bannerAdView?.placementId}")
-        Log.e(TAG, "Error Code: ${errorInfo?.errorCode}")
-        Log.e(TAG, "Error Message: ${errorInfo?.errorMessage}")
-
+    override fun onAdFailedToLoad(error: AdRequestError) {
+        Log.e(TAG, "✗ Banner failed: ${error.description}")
         isLoaded = false
-
-        // Schedule retry
         scheduleRetry()
     }
 
-    override fun onBannerClick(bannerAdView: BannerView?) {
-        Log.d(TAG, "Banner clicked: ${bannerAdView?.placementId}")
+    override fun onAdClicked() {
+        Log.d(TAG, "Banner clicked")
     }
 
-    override fun onBannerLeftApplication(bannerAdView: BannerView?) {
-        Log.d(TAG, "Banner left application: ${bannerAdView?.placementId}")
+    override fun onLeftApplication() {
+        Log.d(TAG, "Left application")
     }
 
-    override fun onBannerShown(bannerAdView: BannerView?) {
-        Log.d(TAG, "Banner shown: ${bannerAdView?.placementId}")
-        // Unity will handle 15-second refresh automatically
+    override fun onReturnedToApplication() {
+        Log.d(TAG, "Returned to application")
+    }
+
+    override fun onImpression(impressionData: ImpressionData?) {
+        Log.d(TAG, "Banner impression")
     }
 }

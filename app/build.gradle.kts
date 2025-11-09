@@ -15,12 +15,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Updated app name
         setProperty("archivesBaseName", "Status-Saver-2026")
     }
 
-    // Signing configuration for release builds
     signingConfigs {
         create("release") {
             storeFile = file("../release-key.jks")
@@ -44,12 +41,10 @@ android {
         }
     }
 
-    // Updated APK naming
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = defaultConfig.versionName
-            // Format: Status-Saver-2026-v1.0.apk
             output.outputFileName = "Status-Saver-2026-v${versionName}.apk"
         }
     }
@@ -85,9 +80,13 @@ dependencies {
     // Glide for image loading - Latest
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
-    // Unity Ads - Updated to 4.16.3
-    implementation("com.unity3d.ads:unity-ads:4.16.3")
-
+    // ========== YANDEX MOBILE ADS (PRIMARY) ==========
+    // Yandex Mobile Ads SDK 7.16.1 - Latest version (September 2025)
+    implementation("com.yandex.android:mobileads:7.16.1")
+    
+    // Unity Ads adapter for Yandex Mediation 4.16.1.0 (includes Unity Ads 4.16.1)
+    implementation("com.yandex.ads.mediation:mobileads-unityads:4.16.1.0")
+    
     // Coroutines - Latest
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 

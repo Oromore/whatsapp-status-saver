@@ -50,6 +50,7 @@ class MediaAdapter(
     }
 
     private val loadedAds = mutableMapOf<Int, NativeAd>()
+    private val loaders = mutableMapOf<Int, NativeAdLoader>()
 
     private val adUnitId: String
         get() = if (YandexAdsManager.TEST_MODE) TEST_AD_UNIT_ID else PROD_AD_UNIT_ID
@@ -83,7 +84,9 @@ class MediaAdapter(
         Log.d(TAG, "Ad Unit ID: $adUnitId")
         Log.d(TAG, "Test Mode: ${YandexAdsManager.TEST_MODE}")
 
+        // CRITICAL: Keep strong reference to loader (don't let it be garbage collected)
         val nativeAdLoader = NativeAdLoader(context)
+        loaders[position] = nativeAdLoader
 
         nativeAdLoader.setNativeAdLoadListener(object : NativeAdLoadListener {
             override fun onAdLoaded(nativeAd: NativeAd) {

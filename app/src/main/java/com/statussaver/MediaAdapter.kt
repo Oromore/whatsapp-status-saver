@@ -24,7 +24,7 @@ import com.yandex.mobile.ads.nativeads.NativeAdView
 import com.yandex.mobile.ads.nativeads.NativeAdViewBinder
 
 /**
- * Media adapter with Yandex native ads (MANUAL CONFIGURATION - OFFICIAL)
+ * Media adapter with Yandex native ads (FIXED - OFFICIAL CONFIGURATION)
  * Shows native ad every 3 media items
  */
 class MediaAdapter(
@@ -38,7 +38,7 @@ class MediaAdapter(
         private const val VIEW_TYPE_MEDIA = 0
         private const val VIEW_TYPE_NATIVE_AD = 1
         private const val AD_FREQUENCY = 3
-        
+
         private const val TEST_AD_UNIT_ID = "demo-native-content-yandex"
         private const val PROD_AD_UNIT_ID = "R-M-17685522-1"
     }
@@ -50,7 +50,7 @@ class MediaAdapter(
 
     private val loadedAds = mutableMapOf<Int, NativeAd>()
     private val loaders = mutableMapOf<Int, NativeAdLoader>()
-    
+
     private val adUnitId: String
         get() = if (YandexAdsManager.TEST_MODE) TEST_AD_UNIT_ID else PROD_AD_UNIT_ID
 
@@ -59,17 +59,17 @@ class MediaAdapter(
 
         mediaItems.forEachIndexed { index, mediaItem ->
             itemsWithAds.add(ListItem.Media(mediaItem))
-            
+
             if ((index + 1) % AD_FREQUENCY == 0) {
                 val adPosition = itemsWithAds.size
                 itemsWithAds.add(ListItem.NativeAdItem(loadedAds[adPosition], adPosition))
-                
+
                 if (loadedAds[adPosition] == null) {
                     loadNativeAd(adPosition)
                 }
             }
         }
-        
+
         submitList(itemsWithAds)
     }
 
@@ -90,7 +90,7 @@ class MediaAdapter(
             override fun onAdLoaded(nativeAd: NativeAd) {
                 Log.d(TAG, "✓✓✓ NATIVE AD LOADED for position $position ✓✓✓")
                 loadedAds[position] = nativeAd
-                
+
                 val currentList = currentList.toMutableList()
                 if (position < currentList.size && currentList[position] is ListItem.NativeAdItem) {
                     currentList[position] = ListItem.NativeAdItem(nativeAd, position)
@@ -170,7 +170,7 @@ class MediaAdapter(
         }
     }
 
-    // ========== Native Ad ViewHolder (MANUAL BINDING - OFFICIAL) ==========
+    // ========== Native Ad ViewHolder (FIXED - OFFICIAL YANDEX METHOD) ==========
     inner class NativeAdViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nativeAdView: NativeAdView = itemView.findViewById(R.id.nativeAdView)
 
@@ -183,29 +183,30 @@ class MediaAdapter(
 
             try {
                 Log.d(TAG, "Binding native ad at position ${bindingAdapterPosition}")
-                
-                // Build the NativeAdViewBinder with all view mappings
+
+                // CRITICAL FIX: Use nativeAdView.findViewById instead of itemView.findViewById
+                // This ensures views are direct children of NativeAdView as required by Yandex
                 val binder = NativeAdViewBinder.Builder(nativeAdView)
-                    .setMediaView(itemView.findViewById(R.id.mediaView))
-                    .setIconView(itemView.findViewById(R.id.iconView))
-                    .setTitleView(itemView.findViewById(R.id.titleView))
-                    .setBodyView(itemView.findViewById(R.id.bodyView))
-                    .setCallToActionView(itemView.findViewById<MaterialButton>(R.id.callToActionView))
-                    .setSponsoredView(itemView.findViewById(R.id.sponsoredView))
-                    .setWarningView(itemView.findViewById(R.id.warningView))
-                    .setFeedbackView(itemView.findViewById(R.id.feedbackView))
-                    .setAgeView(itemView.findViewById(R.id.ageView))
-                    .setDomainView(itemView.findViewById(R.id.domainView))
-                    .setFaviconView(itemView.findViewById(R.id.faviconView))
-                    .setPriceView(itemView.findViewById(R.id.priceView))
-                    .setRatingView(itemView.findViewById(R.id.ratingView))
-                    .setReviewCountView(itemView.findViewById(R.id.reviewCountView))
+                    .setMediaView(nativeAdView.findViewById(R.id.mediaView))
+                    .setIconView(nativeAdView.findViewById(R.id.iconView))
+                    .setTitleView(nativeAdView.findViewById(R.id.titleView))
+                    .setBodyView(nativeAdView.findViewById(R.id.bodyView))
+                    .setCallToActionView(nativeAdView.findViewById<MaterialButton>(R.id.callToActionView))
+                    .setSponsoredView(nativeAdView.findViewById(R.id.sponsoredView))
+                    .setWarningView(nativeAdView.findViewById(R.id.warningView))
+                    .setFeedbackView(nativeAdView.findViewById(R.id.feedbackView))
+                    .setAgeView(nativeAdView.findViewById(R.id.ageView))
+                    .setDomainView(nativeAdView.findViewById(R.id.domainView))
+                    .setFaviconView(nativeAdView.findViewById(R.id.faviconView))
+                    .setPriceView(nativeAdView.findViewById(R.id.priceView))
+                    .setRatingView(nativeAdView.findViewById(R.id.ratingView))
+                    .setReviewCountView(nativeAdView.findViewById(R.id.reviewCountView))
                     .build()
-                
+
                 // Bind the ad using the official Yandex method
                 nativeAd.bindNativeAd(binder)
-                
-                // Set event listener for tracking
+
+                // Set event listener AFTER binding (as per Yandex documentation)
                 nativeAd.setNativeAdEventListener(object : NativeAdEventListener {
                     override fun onAdClicked() {
                         Log.d(TAG, "Native ad clicked")
@@ -226,10 +227,10 @@ class MediaAdapter(
                         }
                     }
                 })
-                
+
                 nativeAdView.visibility = View.VISIBLE
                 Log.d(TAG, "✓ Native ad bound successfully")
-                
+
             } catch (e: Exception) {
                 Log.e(TAG, "✗ Error binding native ad", e)
                 nativeAdView.visibility = View.GONE

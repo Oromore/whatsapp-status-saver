@@ -88,7 +88,6 @@ class MediaListFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        // Updated adapter - now includes Context for native ad loading
         adapter = MediaAdapter(
             context = requireContext(),
             onSaveClick = { item ->
@@ -102,10 +101,8 @@ class MediaListFragment : Fragment() {
         val spanCount = getSpanCount(requireContext())
         binding.recyclerView.apply {
             layoutManager = GridLayoutManager(requireContext(), spanCount).apply {
-                // Make native ads span full width
                 spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                     override fun getSpanSize(position: Int): Int {
-                        // Safe access with null check
                         return when (adapter?.getItemViewType(position)) {
                             1 -> spanCount // Native ad takes full width
                             else -> 1 // Media items take 1 column
@@ -128,12 +125,16 @@ class MediaListFragment : Fragment() {
                 val mediaList = mediaMap[mediaType] ?: emptyList()
 
                 withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-
                     if (mediaList.isNotEmpty()) {
-                        binding.recyclerView.visibility = View.VISIBLE
-                        adapter.setMediaItems(mediaList) // Use setMediaItems instead of submitList
+                        // CRITICAL FIX: Wait for Yandex to be ready before setting media
+                        YandexAdsManager.onReady {
+                            Log.d(TAG, "Yandex ready - setting media items for native ads")
+                            binding.progressBar.visibility = View.GONE
+                            binding.recyclerView.visibility = View.VISIBLE
+                            adapter.setMediaItems(mediaList)
+                        }
                     } else {
+                        binding.progressBar.visibility = View.GONE
                         binding.emptyState.visibility = View.VISIBLE
                         binding.emptyText.text = getString(R.string.no_status_instruction)
                     }

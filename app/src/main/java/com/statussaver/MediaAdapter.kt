@@ -51,50 +51,51 @@ class MediaAdapter(
 
     private val loadedAds = mutableMapOf<Int, NativeAd>()
     private val failedPositions = mutableSetOf<Int>()
+    private val pendingPositions = mutableListOf<Int>()
     
-    // CRITICAL FIX: Keep strong reference to loader
+    // CRITICAL: Keep strong reference to loader for entire adapter lifetime
     private val nativeAdLoader = NativeAdLoader(context)
 
     private val adUnitId: String
         get() = if (YandexAdsManager.TEST_MODE) TEST_AD_UNIT_ID else PROD_AD_UNIT_ID
 
     init {
-        // Set load listener once for all ads
+        // Set listener ONCE for all ad loads through this loader
         nativeAdLoader.setNativeAdLoadListener(object : NativeAdLoadListener {
             override fun onAdLoaded(nativeAd: NativeAd) {
-                val position = nativeAd.hashCode() % 1000 // Use ad object hash as identifier
-                Log.d(TAG, "✓ NATIVE AD LOADED")
+                if (pendingPositions.isEmpty()) {
+                    Log.w(TAG, "Ad loaded but no pending positions")
+                    return
+                }
+
+                // Assign ad to the oldest pending position (FIFO)
+                val position = pendingPositions.removeAt(0)
+                Log.d(TAG, "✓ Native ad loaded for position $position")
                 
+                loadedAds[position] = nativeAd
+
                 val currentList = currentList.toMutableList()
-                for (i in currentList.indices) {
-                    if (currentList[i] is ListItem.NativeAdItem) {
-                        val adItem = currentList[i] as ListItem.NativeAdItem
-                        if (adItem.nativeAd == null && !failedPositions.contains(adItem.position)) {
-                            currentList[i] = ListItem.NativeAdItem(nativeAd, adItem.position)
-                            loadedAds[adItem.position] = nativeAd
-                            submitList(currentList)
-                            return
-                        }
-                    }
+                if (position < currentList.size && currentList[position] is ListItem.NativeAdItem) {
+                    currentList[position] = ListItem.NativeAdItem(nativeAd, position)
+                    submitList(currentList)
                 }
             }
 
             override fun onAdFailedToLoad(error: AdRequestError) {
-                Log.e(TAG, "✗ NATIVE AD FAILED")
-                Log.e(TAG, "Error: ${error.code} - ${error.description}")
+                if (pendingPositions.isEmpty()) {
+                    Log.w(TAG, "Ad failed to load but no pending positions")
+                    return
+                }
+
+                val position = pendingPositions.removeAt(0)
+                Log.e(TAG, "✗ Native ad failed for position $position | Error: ${error.code} - ${error.description}")
                 
-                // Mark a position as failed to prevent retry
+                failedPositions.add(position)
+
                 val currentList = currentList.toMutableList()
-                for (i in currentList.indices) {
-                    if (currentList[i] is ListItem.NativeAdItem) {
-                        val adItem = currentList[i] as ListItem.NativeAdItem
-                        if (adItem.nativeAd == null && !failedPositions.contains(adItem.position)) {
-                            failedPositions.add(adItem.position)
-                            currentList.removeAt(i)
-                            submitList(currentList)
-                            return
-                        }
-                    }
+                if (position < currentList.size && currentList[position] is ListItem.NativeAdItem) {
+                    currentList.removeAt(position)
+                    submitList(currentList)
                 }
             }
         })
@@ -122,11 +123,12 @@ class MediaAdapter(
 
     private fun loadNativeAd(position: Int) {
         if (!YandexAdsManager.isReady()) {
-            Log.w(TAG, "Yandex not ready - skipping native ad")
+            Log.w(TAG, "Yandex not ready - skipping native ad load")
             return
         }
 
-        Log.d(TAG, "Loading native ad at position $position | Ad Unit: $adUnitId")
+        Log.d(TAG, "Requesting native ad for position $position | Ad Unit: $adUnitId")
+        pendingPositions.add(position)
 
         val adRequestConfiguration = NativeAdRequestConfiguration.Builder(adUnitId).build()
         nativeAdLoader.loadAd(adRequestConfiguration)
@@ -204,7 +206,7 @@ class MediaAdapter(
             }
 
             itemView.visibility = View.VISIBLE
-            Log.d(TAG, "Binding native ad")
+            Log.d(TAG, "Binding native ad to view")
 
             try {
                 val binder = NativeAdViewBinder.Builder(nativeAdView)
@@ -232,7 +234,7 @@ class MediaAdapter(
                     }
 
                     override fun onLeftApplication() {
-                        Log.d(TAG, "Left application")
+                        Log.d(TAG, "Left application from native ad")
                     }
 
                     override fun onReturnedToApplication() {

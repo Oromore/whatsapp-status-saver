@@ -21,7 +21,7 @@ import com.yandex.mobile.ads.nativeads.NativeAdRequestConfiguration
 import com.yandex.mobile.ads.nativeads.NativeAdView
 
 /**
- * Media adapter with Yandex native ads (AUTOMATIC CONFIGURATION)
+ * Media adapter with Yandex native ads (AUTOMATIC CONFIGURATION - SDK 7.x)
  * Shows native ad every 3 media items
  */
 class MediaAdapter(
@@ -36,7 +36,6 @@ class MediaAdapter(
         private const val VIEW_TYPE_NATIVE_AD = 1
         private const val AD_FREQUENCY = 3
         
-        // Test and production ad unit IDs
         private const val TEST_AD_UNIT_ID = "demo-native-content-yandex"
         private const val PROD_AD_UNIT_ID = "R-M-17685522-1"
     }
@@ -81,7 +80,6 @@ class MediaAdapter(
         Log.d(TAG, "Ad Unit ID: $adUnitId")
         Log.d(TAG, "Test Mode: ${YandexAdsManager.TEST_MODE}")
 
-        // Keep strong reference to loader
         val nativeAdLoader = NativeAdLoader(context)
         loaders[position] = nativeAdLoader
 
@@ -169,7 +167,7 @@ class MediaAdapter(
         }
     }
 
-    // ========== Native Ad ViewHolder (AUTOMATIC MODE) ==========
+    // ========== Native Ad ViewHolder (AUTOMATIC MODE - SDK 7.x) ==========
     inner class NativeAdViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nativeAdView: NativeAdView = itemView.findViewById(R.id.nativeAdView)
 
@@ -183,8 +181,9 @@ class MediaAdapter(
             try {
                 Log.d(TAG, "Binding native ad at position ${bindingAdapterPosition}")
                 
-                // AUTOMATIC MODE: Just set the ad - Yandex handles everything!
-                nativeAdView.setAd(nativeAd)
+                // AUTOMATIC MODE (SDK 7.x): nativeAd.bindNativeAd() does everything!
+                // Yandex automatically finds views by ID and binds all assets
+                nativeAd.bindNativeAd(nativeAdView)
                 nativeAdView.visibility = View.VISIBLE
                 
                 Log.d(TAG, "✓ Native ad bound successfully (automatic mode)")

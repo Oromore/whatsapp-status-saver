@@ -14,30 +14,44 @@ import com.yandex.mobile.ads.common.AdRequestError
 import com.yandex.mobile.ads.common.ImpressionData
 
 /**
- * Yandex Banner Ad Manager
- * Ad Unit ID: R-M-17685522-2
- *
- * Permanent bottom banner with health check
+ * Yandex Banner Ad Manager (PURE YANDEX)
+ * 
+ * TEST MODE: Uses demo-banner-yandex (works worldwide)
+ * PRODUCTION: Uses R-M-17685522-2 (your real ad unit)
  */
 class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
 
     companion object {
         private const val TAG = "BannerAdManager"
-        private const val AD_UNIT_ID = "R-M-17685522-2"
-        private const val RETRY_DELAY_MS = 2000L
-        private const val HEALTH_CHECK_INTERVAL_MS = 5000L
+        
+        // Test ad unit (works anywhere in the world)
+        private const val TEST_AD_UNIT_ID = "demo-banner-yandex"
+        
+        // Production ad unit (your real Yandex ad unit)
+        private const val PROD_AD_UNIT_ID = "R-M-17685522-2"
+        
+        private const val RETRY_DELAY_MS = 3000L
+        private const val HEALTH_CHECK_INTERVAL_MS = 10000L
+        private const val MAX_RETRIES = 5
     }
 
     private var bannerAdView: BannerAdView? = null
     private var container: FrameLayout? = null
     private var isLoaded = false
     private var isDestroyed = false
+    private var retryCount = 0
 
     private val retryHandler = Handler(Looper.getMainLooper())
     private val healthCheckHandler = Handler(Looper.getMainLooper())
 
+    // Get the appropriate ad unit ID based on test mode
+    private val adUnitId: String
+        get() = if (YandexAdsManager.TEST_MODE) TEST_AD_UNIT_ID else PROD_AD_UNIT_ID
+
     fun loadBanner(adContainer: FrameLayout) {
         Log.d(TAG, "=== LOADING BANNER ===")
+        Log.d(TAG, "Ad Unit ID: $adUnitId")
+        Log.d(TAG, "Test Mode: ${YandexAdsManager.TEST_MODE}")
 
         if (isDestroyed) return
 
@@ -45,7 +59,7 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
         container?.visibility = View.VISIBLE
 
         if (bannerAdView != null && isLoaded) {
-            Log.d(TAG, "Banner already active")
+            Log.d(TAG, "Banner already active and loaded")
             return
         }
 
@@ -55,32 +69,39 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
     }
 
     private fun createBanner() {
-        Log.d(TAG, "Creating banner")
+        Log.d(TAG, "Creating banner (attempt ${retryCount + 1}/$MAX_RETRIES)")
 
         if (isDestroyed) return
 
         try {
+            // Cleanup old banner
             bannerAdView?.destroy()
             container?.removeAllViews()
 
             // Calculate banner width in dp
             val displayMetrics = activity.resources.displayMetrics
             val screenWidthDp = (displayMetrics.widthPixels / displayMetrics.density).toInt()
+            
+            Log.d(TAG, "Screen width: ${screenWidthDp}dp")
 
+            // Create banner
             bannerAdView = BannerAdView(activity).apply {
-                setAdUnitId(AD_UNIT_ID)
-                // BannerAdSize.stickySize requires (Context, width in dp)
+                setAdUnitId(adUnitId)
                 setAdSize(BannerAdSize.stickySize(activity, screenWidthDp))
                 setBannerAdEventListener(this@BannerAdManager)
             }
 
+            // Add to container
             container?.addView(bannerAdView)
 
+            // Load ad
             val adRequest = AdRequest.Builder().build()
+            
+            Log.d(TAG, "Calling loadAd()...")
             bannerAdView?.loadAd(adRequest)
+            
             isLoaded = false
 
-            Log.d(TAG, "Banner loadAd() called with width: ${screenWidthDp}dp")
         } catch (e: Exception) {
             Log.e(TAG, "Error creating banner", e)
             scheduleRetry()
@@ -89,14 +110,24 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
 
     private fun scheduleRetry() {
         if (isDestroyed) return
+        
+        retryCount++
+        
+        if (retryCount >= MAX_RETRIES) {
+            Log.e(TAG, "Max retries reached - banner loading failed")
+            container?.visibility = View.GONE
+            return
+        }
 
-        Log.d(TAG, "Scheduling retry in ${RETRY_DELAY_MS}ms")
-        retryHandler.postDelayed({ createBanner() }, RETRY_DELAY_MS)
+        Log.d(TAG, "Scheduling retry ${retryCount + 1}/$MAX_RETRIES in ${RETRY_DELAY_MS}ms")
+        retryHandler.postDelayed({ 
+            createBanner() 
+        }, RETRY_DELAY_MS)
     }
 
     private fun startHealthCheck() {
         Log.d(TAG, "Starting health check")
-
+        
         healthCheckHandler.postDelayed(object : Runnable {
             override fun run() {
                 if (isDestroyed) return
@@ -104,6 +135,7 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
                 if (bannerAdView == null || bannerAdView?.parent == null) {
                     Log.w(TAG, "Health check failed - reloading")
                     isLoaded = false
+                    retryCount = 0
                     createBanner()
                 } else {
                     activity.runOnUiThread {
@@ -135,8 +167,9 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
 
     // ========== BannerAdEventListener ==========
     override fun onAdLoaded() {
-        Log.d(TAG, "✓ Banner loaded")
+        Log.d(TAG, "✓✓✓ BANNER LOADED SUCCESSFULLY ✓✓✓")
         isLoaded = true
+        retryCount = 0
 
         activity.runOnUiThread {
             bannerAdView?.visibility = View.VISIBLE
@@ -147,7 +180,10 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
     }
 
     override fun onAdFailedToLoad(error: AdRequestError) {
-        Log.e(TAG, "✗ Banner failed: ${error.description}")
+        Log.e(TAG, "✗✗✗ BANNER FAILED TO LOAD ✗✗✗")
+        Log.e(TAG, "Error Code: ${error.code}")
+        Log.e(TAG, "Error Description: ${error.description}")
+        
         isLoaded = false
         scheduleRetry()
     }
@@ -166,5 +202,8 @@ class BannerAdManager(private val activity: Activity) : BannerAdEventListener {
 
     override fun onImpression(impressionData: ImpressionData?) {
         Log.d(TAG, "Banner impression")
+        impressionData?.let {
+            Log.d(TAG, "Impression data: ${it.rawData}")
+        }
     }
 }

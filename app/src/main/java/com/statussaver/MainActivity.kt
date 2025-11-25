@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         Log.d(TAG, "=== MainActivity onCreate ===")
+        Log.d(TAG, "Test Mode: ${YandexAdsManager.TEST_MODE}")
 
         scanner = StatusScanner(this)
 
@@ -82,6 +83,28 @@ class MainActivity : AppCompatActivity() {
         binding.btnAudio.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
             showMediaFragment("AUDIO")
+        }
+
+        // ========== DEBUG BUTTON - LONG PRESS HEADER TO SHOW DEBUG PANEL ==========
+        // This allows you to test ads without VPN!
+        binding.header.setOnLongClickListener {
+            if (YandexAdsManager.isReady()) {
+                Log.d(TAG, "Opening Yandex Debug Panel")
+                YandexAdsManager.showDebugPanel(this)
+                Toast.makeText(this, "Debug Panel Opened", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Yandex not initialized yet", Toast.LENGTH_SHORT).show()
+            }
+            true
+        }
+
+        // Show test mode warning on first launch
+        if (YandexAdsManager.TEST_MODE) {
+            Toast.makeText(
+                this,
+                "⚠️ TEST MODE - Using Yandex demo ads\nLong press header for Debug Panel",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 

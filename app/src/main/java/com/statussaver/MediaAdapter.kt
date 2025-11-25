@@ -24,8 +24,11 @@ import com.yandex.mobile.ads.nativeads.NativeAdView
 import com.yandex.mobile.ads.nativeads.NativeAdViewBinder
 
 /**
- * Media adapter with Yandex native ads
+ * Media adapter with Yandex native ads (PURE YANDEX)
  * Shows native ad every 3 media items
+ * 
+ * TEST MODE: Uses demo-native-content-yandex (works worldwide)
+ * PRODUCTION: Uses R-M-17685522-1 (your real ad unit)
  */
 class MediaAdapter(
     private val context: Context,
@@ -37,8 +40,13 @@ class MediaAdapter(
         private const val TAG = "MediaAdapter"
         private const val VIEW_TYPE_MEDIA = 0
         private const val VIEW_TYPE_NATIVE_AD = 1
-        private const val AD_FREQUENCY = 3 // Ad every 3 items
-        private const val AD_UNIT_ID = "R-M-17685522-1"
+        private const val AD_FREQUENCY = 3
+        
+        // Test ad unit (works anywhere in the world)
+        private const val TEST_AD_UNIT_ID = "demo-native-content-yandex"
+        
+        // Production ad unit (your real Yandex ad unit)
+        private const val PROD_AD_UNIT_ID = "R-M-17685522-1"
     }
 
     sealed class ListItem {
@@ -47,6 +55,10 @@ class MediaAdapter(
     }
 
     private val loadedAds = mutableMapOf<Int, NativeAd>()
+
+    // Get the appropriate ad unit ID based on test mode
+    private val adUnitId: String
+        get() = if (YandexAdsManager.TEST_MODE) TEST_AD_UNIT_ID else PROD_AD_UNIT_ID
 
     fun setMediaItems(mediaItems: List<MediaItem>) {
         val itemsWithAds = mutableListOf<ListItem>()
@@ -70,17 +82,19 @@ class MediaAdapter(
 
     private fun loadNativeAd(position: Int) {
         if (!YandexAdsManager.isReady()) {
-            Log.w(TAG, "Yandex not ready - skipping ad load")
+            Log.w(TAG, "Yandex not ready - skipping native ad")
             return
         }
 
         Log.d(TAG, "Loading native ad for position $position")
+        Log.d(TAG, "Ad Unit ID: $adUnitId")
+        Log.d(TAG, "Test Mode: ${YandexAdsManager.TEST_MODE}")
 
         val nativeAdLoader = NativeAdLoader(context)
 
         nativeAdLoader.setNativeAdLoadListener(object : NativeAdLoadListener {
             override fun onAdLoaded(nativeAd: NativeAd) {
-                Log.d(TAG, "✓ Native ad loaded for position $position")
+                Log.d(TAG, "✓✓✓ NATIVE AD LOADED for position $position ✓✓✓")
                 loadedAds[position] = nativeAd
 
                 // Update list if position still exists
@@ -92,7 +106,9 @@ class MediaAdapter(
             }
 
             override fun onAdFailedToLoad(error: AdRequestError) {
-                Log.e(TAG, "✗ Native ad failed for position $position: ${error.description}")
+                Log.e(TAG, "✗✗✗ NATIVE AD FAILED for position $position ✗✗✗")
+                Log.e(TAG, "Error Code: ${error.code}")
+                Log.e(TAG, "Error Description: ${error.description}")
 
                 // Remove ad placeholder on failure
                 val currentList = currentList.toMutableList()
@@ -103,11 +119,7 @@ class MediaAdapter(
             }
         })
 
-        // Create NativeAdRequestConfiguration with proper API
-        val adRequestConfiguration = NativeAdRequestConfiguration.Builder(AD_UNIT_ID)
-            .setShouldLoadImagesAutomatically(true)
-            .build()
-
+        val adRequestConfiguration = NativeAdRequestConfiguration.Builder(adUnitId).build()
         nativeAdLoader.loadAd(adRequestConfiguration)
     }
 
@@ -177,9 +189,14 @@ class MediaAdapter(
         private val nativeAdView: NativeAdView = itemView.findViewById(R.id.nativeAdView)
 
         fun bind(nativeAd: NativeAd?) {
-            if (nativeAd == null) return
+            if (nativeAd == null) {
+                Log.w(TAG, "Attempted to bind null native ad")
+                return
+            }
 
             try {
+                Log.d(TAG, "Binding native ad")
+                
                 val binder = NativeAdViewBinder.Builder(nativeAdView)
                     .setAgeView(itemView.findViewById(R.id.ageView))
                     .setBodyView(itemView.findViewById(R.id.bodyView))
@@ -214,12 +231,15 @@ class MediaAdapter(
 
                     override fun onImpression(data: com.yandex.mobile.ads.common.ImpressionData?) {
                         Log.d(TAG, "Native ad impression")
+                        data?.let {
+                            Log.d(TAG, "Impression data: ${it.rawData}")
+                        }
                     }
                 })
 
-                Log.d(TAG, "Native ad bound successfully")
+                Log.d(TAG, "✓ Native ad bound successfully")
             } catch (e: Exception) {
-                Log.e(TAG, "Error binding native ad", e)
+                Log.e(TAG, "✗ Error binding native ad", e)
             }
         }
     }

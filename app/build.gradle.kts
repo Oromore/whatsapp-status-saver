@@ -13,7 +13,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
+        
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         setProperty("archivesBaseName", "Status-Saver-2026")
     }
@@ -80,13 +80,12 @@ dependencies {
     // Glide for image loading - Latest
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
-    // ========== YANDEX MOBILE ADS (PRIMARY) ==========
-    // Yandex Mobile Ads SDK 7.16.1 - Latest version (September 2025)
+    // ========== YANDEX MOBILE ADS ONLY (For RuStore) ==========
+    // Yandex Mobile Ads SDK 7.16.1 - Latest version
     implementation("com.yandex.android:mobileads:7.16.1")
     
-    // Unity Ads adapter for Yandex Mediation 4.16.1.0 (includes Unity Ads 4.16.1)
-    implementation("com.yandex.ads.mediation:mobileads-unityads:4.16.1.0")
-    
+    // NO Unity Ads adapter - Pure Yandex only!
+
     // Coroutines - Latest
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 

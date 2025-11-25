@@ -74,10 +74,11 @@ class LogViewerActivity : AppCompatActivity() {
                 )
 
                 val reader = BufferedReader(InputStreamReader(process.inputStream))
-                var line: String?
 
-                while (isRunning && reader.readLine().also { line = it } != null) {
-                    line?.let { logLine ->
+                while (isRunning) {
+                    val line = reader.readLine() ?: break
+                    
+                    line.let { logLine ->
                         runOnUiThread {
                             // Add to log
                             logBuilder.append(logLine).append("\n")

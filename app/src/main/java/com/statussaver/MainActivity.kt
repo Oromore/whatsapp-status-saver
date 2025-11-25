@@ -58,6 +58,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // ========== DEBUG TAP LISTENER ==========
+        // Tap the header to show debug logs
+        binding.header.setOnClickListener {
+            Log.d(TAG, "Debug tap - showing logs")
+            DebugLogViewer.showLogs(this)
+        }
+        // ========================================
+
         // Check permissions
         if (checkPermissions()) {
             if (isFirstLaunch()) {

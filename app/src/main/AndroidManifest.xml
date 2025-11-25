@@ -70,13 +70,6 @@
             android:hardwareAccelerated="true"
             android:parentActivityName=".MainActivity" />
 
-        <!-- Log Viewer Activity (for debugging ads) -->
-        <activity
-            android:name=".LogViewerActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
     </application>
 
 </manifest>

@@ -37,17 +37,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
-    // For log viewer trigger
-    private var tapCount = 0
-    private var lastTapTime = 0L
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         Log.d(TAG, "=== MainActivity onCreate ===")
-        Log.d(TAG, "Test Mode: ${YandexAdsManager.TEST_MODE}")
 
         scanner = StatusScanner(this)
 
@@ -88,48 +83,6 @@ class MainActivity : AppCompatActivity() {
         binding.btnAudio.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
             showMediaFragment("AUDIO")
-        }
-
-        // ========== DEBUG PANEL - LONG PRESS HEADER ==========
-        binding.header.setOnLongClickListener {
-            if (YandexAdsManager.isReady()) {
-                Log.d(TAG, "Opening Yandex Debug Panel")
-                YandexAdsManager.showDebugPanel(this)
-                Toast.makeText(this, "Debug Panel Opened", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Yandex not initialized yet", Toast.LENGTH_SHORT).show()
-            }
-            true
-        }
-
-        // ========== LOG VIEWER - TAP BOTTOM-RIGHT CORNER 5 TIMES ==========
-        binding.adContainer.setOnClickListener {
-            val currentTime = System.currentTimeMillis()
-            
-            // Reset if more than 2 seconds between taps
-            if (currentTime - lastTapTime > 2000) {
-                tapCount = 0
-            }
-            
-            tapCount++
-            lastTapTime = currentTime
-            
-            if (tapCount >= 5) {
-                tapCount = 0
-                Toast.makeText(this, "Opening Log Viewer...", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this, LogViewerActivity::class.java))
-            } else {
-                Toast.makeText(this, "Tap ${5 - tapCount} more times", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        // Show test mode warning on first launch
-        if (YandexAdsManager.TEST_MODE) {
-            Toast.makeText(
-                this,
-                "⚠️ TEST MODE\nLong press header = Debug Panel\nTap banner 5x = Live Logs",
-                Toast.LENGTH_LONG
-            ).show()
         }
     }
 

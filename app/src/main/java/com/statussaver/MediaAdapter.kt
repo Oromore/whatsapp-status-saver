@@ -11,17 +11,20 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.android.material.button.MaterialButton
 import com.statussaver.core.MediaItem
 import com.statussaver.core.MediaType
 import com.yandex.mobile.ads.common.AdRequestError
 import com.yandex.mobile.ads.nativeads.NativeAd
+import com.yandex.mobile.ads.nativeads.NativeAdEventListener
 import com.yandex.mobile.ads.nativeads.NativeAdLoadListener
 import com.yandex.mobile.ads.nativeads.NativeAdLoader
 import com.yandex.mobile.ads.nativeads.NativeAdRequestConfiguration
 import com.yandex.mobile.ads.nativeads.NativeAdView
+import com.yandex.mobile.ads.nativeads.NativeAdViewBinder
 
 /**
- * Media adapter with Yandex native ads (AUTOMATIC CONFIGURATION - SDK 7.x)
+ * Media adapter with Yandex native ads (MANUAL CONFIGURATION - OFFICIAL)
  * Shows native ad every 3 media items
  */
 class MediaAdapter(
@@ -167,7 +170,7 @@ class MediaAdapter(
         }
     }
 
-    // ========== Native Ad ViewHolder (AUTOMATIC MODE - SDK 7.x) ==========
+    // ========== Native Ad ViewHolder (MANUAL BINDING - OFFICIAL) ==========
     inner class NativeAdViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nativeAdView: NativeAdView = itemView.findViewById(R.id.nativeAdView)
 
@@ -181,12 +184,52 @@ class MediaAdapter(
             try {
                 Log.d(TAG, "Binding native ad at position ${bindingAdapterPosition}")
                 
-                // AUTOMATIC MODE (SDK 7.x): nativeAd.bindNativeAd() does everything!
-                // Yandex automatically finds views by ID and binds all assets
-                nativeAd.bindNativeAd(nativeAdView)
-                nativeAdView.visibility = View.VISIBLE
+                // Build the NativeAdViewBinder with all view mappings
+                val binder = NativeAdViewBinder.Builder(nativeAdView)
+                    .setMediaView(itemView.findViewById(R.id.mediaView))
+                    .setIconView(itemView.findViewById(R.id.iconView))
+                    .setTitleView(itemView.findViewById(R.id.titleView))
+                    .setBodyView(itemView.findViewById(R.id.bodyView))
+                    .setCallToActionView(itemView.findViewById<MaterialButton>(R.id.callToActionView))
+                    .setSponsoredView(itemView.findViewById(R.id.sponsoredView))
+                    .setWarningView(itemView.findViewById(R.id.warningView))
+                    .setFeedbackView(itemView.findViewById(R.id.feedbackView))
+                    .setAgeView(itemView.findViewById(R.id.ageView))
+                    .setDomainView(itemView.findViewById(R.id.domainView))
+                    .setFaviconView(itemView.findViewById(R.id.faviconView))
+                    .setPriceView(itemView.findViewById(R.id.priceView))
+                    .setRatingView(itemView.findViewById(R.id.ratingView))
+                    .setReviewCountView(itemView.findViewById(R.id.reviewCountView))
+                    .build()
                 
-                Log.d(TAG, "✓ Native ad bound successfully (automatic mode)")
+                // Bind the ad using the official Yandex method
+                nativeAd.bindNativeAd(binder)
+                
+                // Set event listener for tracking
+                nativeAd.setNativeAdEventListener(object : NativeAdEventListener {
+                    override fun onAdClicked() {
+                        Log.d(TAG, "Native ad clicked")
+                    }
+
+                    override fun onLeftApplication() {
+                        Log.d(TAG, "Left application from native ad")
+                    }
+
+                    override fun onReturnedToApplication() {
+                        Log.d(TAG, "Returned to application")
+                    }
+
+                    override fun onImpression(data: com.yandex.mobile.ads.common.ImpressionData?) {
+                        Log.d(TAG, "Native ad impression recorded")
+                        data?.let {
+                            Log.d(TAG, "Impression data: ${it.rawData}")
+                        }
+                    }
+                })
+                
+                nativeAdView.visibility = View.VISIBLE
+                Log.d(TAG, "✓ Native ad bound successfully")
+                
             } catch (e: Exception) {
                 Log.e(TAG, "✗ Error binding native ad", e)
                 nativeAdView.visibility = View.GONE

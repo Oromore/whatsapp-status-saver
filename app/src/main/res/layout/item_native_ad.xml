@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Yandex Native Ad Item - matches your app's card style -->
+<!-- Yandex Native Ad Layout - AUTOMATIC CONFIGURATION -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -9,56 +9,60 @@
     app:cardCornerRadius="12dp"
     app:cardElevation="2dp">
 
-    <!-- Native Ad Container - Required by Yandex -->
+    <!-- NativeAdView - Yandex automatically binds views with these IDs -->
     <com.yandex.mobile.ads.nativeads.NativeAdView
         android:id="@+id/nativeAdView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-            <!-- Ad Badge (Sponsored label) - Required -->
-            <TextView
-                android:id="@+id/sponsoredView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Ad"
-                android:textSize="10sp"
-                android:textColor="@android:color/darker_gray"
-                android:background="@android:color/white"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="2dp"
-                android:layout_margin="8dp"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
-
-            <!-- Media View (for images/videos) - MUST be at least 300x160 dp per Yandex docs -->
-            <com.yandex.mobile.ads.nativeads.MediaView
-                android:id="@+id/mediaView"
+            <!-- Media Section (Image/Video) -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="300dp"
-                android:background="@color/card_background"
-                app:layout_constraintTop_toTopOf="parent" />
+                android:layout_height="wrap_content">
 
-            <!-- Info Section - matches your media item style -->
+                <!-- Media View - REQUIRED, min 300x160dp -->
+                <com.yandex.mobile.ads.nativeads.MediaView
+                    android:id="@+id/media"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:background="@color/card_background" />
+
+                <!-- Sponsored Badge - REQUIRED -->
+                <TextView
+                    android:id="@+id/sponsored"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|start"
+                    android:layout_margin="8dp"
+                    android:background="@android:color/white"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="2dp"
+                    android:text="Ad"
+                    android:textColor="@android:color/darker_gray"
+                    android:textSize="10sp" />
+            </FrameLayout>
+
+            <!-- Content Section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:padding="12dp"
-                android:gravity="center_vertical"
-                app:layout_constraintTop_toBottomOf="@id/mediaView">
+                android:gravity="center_vertical">
 
-                <!-- Icon -->
+                <!-- App Icon -->
                 <ImageView
-                    android:id="@+id/iconView"
+                    android:id="@+id/icon"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:layout_marginEnd="12dp"
                     android:scaleType="centerCrop"
-                    android:contentDescription="Ad icon" />
+                    android:contentDescription="App icon" />
 
                 <!-- Text Content -->
                 <LinearLayout
@@ -67,9 +71,9 @@
                     android:layout_weight="1"
                     android:orientation="vertical">
 
-                    <!-- Title -->
+                    <!-- Title - REQUIRED -->
                     <TextView
-                        android:id="@+id/titleView"
+                        android:id="@+id/title"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/text_primary"
@@ -78,9 +82,9 @@
                         android:maxLines="1"
                         android:ellipsize="end" />
 
-                    <!-- Body Text -->
+                    <!-- Body/Description -->
                     <TextView
-                        android:id="@+id/bodyView"
+                        android:id="@+id/body"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
@@ -89,94 +93,82 @@
                         android:maxLines="2"
                         android:ellipsize="end" />
 
-                    <!-- Warning (age restriction, etc.) -->
+                    <!-- Rating (optional) -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:id="@+id/rating"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="11sp"
+                            android:textColor="@color/text_secondary" />
+
+                        <TextView
+                            android:id="@+id/review_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textSize="11sp"
+                            android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+
+                    <!-- Warning (age rating, etc.) -->
                     <TextView
-                        android:id="@+id/warningView"
+                        android:id="@+id/warning"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:textSize="10sp"
-                        android:textColor="@android:color/darker_gray"
-                        android:visibility="gone" />
-
+                        android:textColor="@android:color/darker_gray" />
                 </LinearLayout>
 
-                <!-- Call to Action Button - matches your Save button style -->
+                <!-- Call to Action Button - REQUIRED -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/callToActionView"
+                    android:id="@+id/call_to_action"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
-                    android:text="Install"
                     android:textSize="12sp"
                     app:cornerRadius="8dp"
                     app:backgroundTint="@color/whatsapp_green"
                     android:textColor="@color/text_white"
                     style="@style/Widget.Material3.Button" />
-
             </LinearLayout>
 
-            <!-- Optional Assets (hidden by default, shown if available) -->
+            <!-- Optional elements (hidden by default) -->
             <TextView
-                android:id="@+id/domainView"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <ImageView
-                android:id="@+id/faviconView"
+                android:id="@+id/domain"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/favicon"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
             <TextView
-                android:id="@+id/feedbackView"
+                android:id="@+id/feedback"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
             <TextView
-                android:id="@+id/priceView"
+                android:id="@+id/price"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
             <TextView
-                android:id="@+id/ratingView"
+                android:id="@+id/age"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <TextView
-                android:id="@+id/reviewCountView"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <TextView
-                android:id="@+id/ageView"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-        </androidx.constraintlayout.widget.ConstraintLayout>
-
+                android:layout_height="0dp"
+                android:visibility="gone" />
+        </LinearLayout>
     </com.yandex.mobile.ads.nativeads.NativeAdView>
-
 </com.google.android.material.card.MaterialCardView>

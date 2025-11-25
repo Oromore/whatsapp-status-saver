@@ -17,6 +17,7 @@ import com.statussaver.core.MediaType
 import com.yandex.mobile.ads.common.AdRequestError
 import com.yandex.mobile.ads.nativeads.NativeAd
 import com.yandex.mobile.ads.nativeads.NativeAdEventListener
+import com.yandex.mobile.ads.nativeads.NativeAdException
 import com.yandex.mobile.ads.nativeads.NativeAdLoadListener
 import com.yandex.mobile.ads.nativeads.NativeAdLoader
 import com.yandex.mobile.ads.nativeads.NativeAdRequestConfiguration
@@ -26,9 +27,6 @@ import com.yandex.mobile.ads.nativeads.NativeAdViewBinder
 /**
  * Media adapter with Yandex native ads (PURE YANDEX)
  * Shows native ad every 3 media items
- * 
- * TEST MODE: Uses demo-native-content-yandex (works worldwide)
- * PRODUCTION: Uses R-M-17685522-1 (your real ad unit)
  */
 class MediaAdapter(
     private val context: Context,
@@ -42,10 +40,7 @@ class MediaAdapter(
         private const val VIEW_TYPE_NATIVE_AD = 1
         private const val AD_FREQUENCY = 3
         
-        // Test ad unit (works anywhere in the world)
         private const val TEST_AD_UNIT_ID = "demo-native-content-yandex"
-        
-        // Production ad unit (your real Yandex ad unit)
         private const val PROD_AD_UNIT_ID = "R-M-17685522-1"
     }
 
@@ -56,7 +51,6 @@ class MediaAdapter(
 
     private val loadedAds = mutableMapOf<Int, NativeAd>()
 
-    // Get the appropriate ad unit ID based on test mode
     private val adUnitId: String
         get() = if (YandexAdsManager.TEST_MODE) TEST_AD_UNIT_ID else PROD_AD_UNIT_ID
 
@@ -66,7 +60,6 @@ class MediaAdapter(
         mediaItems.forEachIndexed { index, mediaItem ->
             itemsWithAds.add(ListItem.Media(mediaItem))
 
-            // Insert ad after every 3 media items
             if ((index + 1) % AD_FREQUENCY == 0) {
                 val adPosition = itemsWithAds.size
                 itemsWithAds.add(ListItem.NativeAdItem(loadedAds[adPosition], adPosition))
@@ -86,7 +79,8 @@ class MediaAdapter(
             return
         }
 
-        Log.d(TAG, "Loading native ad for position $position")
+        Log.d(TAG, "=== LOADING NATIVE AD ===")
+        Log.d(TAG, "Position: $position")
         Log.d(TAG, "Ad Unit ID: $adUnitId")
         Log.d(TAG, "Test Mode: ${YandexAdsManager.TEST_MODE}")
 
@@ -97,7 +91,6 @@ class MediaAdapter(
                 Log.d(TAG, "✓✓✓ NATIVE AD LOADED for position $position ✓✓✓")
                 loadedAds[position] = nativeAd
 
-                // Update list if position still exists
                 val currentList = currentList.toMutableList()
                 if (position < currentList.size && currentList[position] is ListItem.NativeAdItem) {
                     currentList[position] = ListItem.NativeAdItem(nativeAd, position)
@@ -191,12 +184,16 @@ class MediaAdapter(
         fun bind(nativeAd: NativeAd?) {
             if (nativeAd == null) {
                 Log.w(TAG, "Attempted to bind null native ad")
+                // Hide the entire ad container if no ad
+                itemView.visibility = View.GONE
                 return
             }
 
+            itemView.visibility = View.VISIBLE
+            Log.d(TAG, "=== BINDING NATIVE AD ===")
+            
             try {
-                Log.d(TAG, "Binding native ad")
-                
+                // CRITICAL FIX: Wrap in try-catch as per Yandex docs
                 val binder = NativeAdViewBinder.Builder(nativeAdView)
                     .setAgeView(itemView.findViewById(R.id.ageView))
                     .setBodyView(itemView.findViewById(R.id.bodyView))
@@ -214,15 +211,17 @@ class MediaAdapter(
                     .setWarningView(itemView.findViewById(R.id.warningView))
                     .build()
 
+                // Bind the ad - this can throw NativeAdException
                 nativeAd.bindNativeAd(binder)
 
+                // Set event listener
                 nativeAd.setNativeAdEventListener(object : NativeAdEventListener {
                     override fun onAdClicked() {
                         Log.d(TAG, "Native ad clicked")
                     }
 
                     override fun onLeftApplication() {
-                        Log.d(TAG, "Left application")
+                        Log.d(TAG, "Left application from native ad")
                     }
 
                     override fun onReturnedToApplication() {
@@ -230,16 +229,26 @@ class MediaAdapter(
                     }
 
                     override fun onImpression(data: com.yandex.mobile.ads.common.ImpressionData?) {
-                        Log.d(TAG, "Native ad impression")
+                        Log.d(TAG, "Native ad impression recorded")
                         data?.let {
                             Log.d(TAG, "Impression data: ${it.rawData}")
                         }
                     }
                 })
 
-                Log.d(TAG, "✓ Native ad bound successfully")
+                Log.d(TAG, "✓✓✓ NATIVE AD BOUND SUCCESSFULLY ✓✓✓")
+                
+            } catch (e: NativeAdException) {
+                // CRITICAL: Catch binding exceptions
+                Log.e(TAG, "✗✗✗ NATIVE AD BINDING FAILED ✗✗✗")
+                Log.e(TAG, "NativeAdException: ${e.message}", e)
+                
+                // Hide the ad container on binding failure
+                itemView.visibility = View.GONE
+                
             } catch (e: Exception) {
-                Log.e(TAG, "✗ Error binding native ad", e)
+                Log.e(TAG, "✗✗✗ UNEXPECTED ERROR BINDING NATIVE AD ✗✗✗", e)
+                itemView.visibility = View.GONE
             }
         }
     }

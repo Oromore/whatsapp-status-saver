@@ -2,6 +2,7 @@ package com.statussaver
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -35,6 +36,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
+
+    // For log viewer trigger
+    private var tapCount = 0
+    private var lastTapTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,8 +90,7 @@ class MainActivity : AppCompatActivity() {
             showMediaFragment("AUDIO")
         }
 
-        // ========== DEBUG BUTTON - LONG PRESS HEADER TO SHOW DEBUG PANEL ==========
-        // This allows you to test ads without VPN!
+        // ========== DEBUG PANEL - LONG PRESS HEADER ==========
         binding.header.setOnLongClickListener {
             if (YandexAdsManager.isReady()) {
                 Log.d(TAG, "Opening Yandex Debug Panel")
@@ -98,11 +102,32 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
+        // ========== LOG VIEWER - TAP BOTTOM-RIGHT CORNER 5 TIMES ==========
+        binding.adContainer.setOnClickListener {
+            val currentTime = System.currentTimeMillis()
+            
+            // Reset if more than 2 seconds between taps
+            if (currentTime - lastTapTime > 2000) {
+                tapCount = 0
+            }
+            
+            tapCount++
+            lastTapTime = currentTime
+            
+            if (tapCount >= 5) {
+                tapCount = 0
+                Toast.makeText(this, "Opening Log Viewer...", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, LogViewerActivity::class.java))
+            } else {
+                Toast.makeText(this, "Tap ${5 - tapCount} more times", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         // Show test mode warning on first launch
         if (YandexAdsManager.TEST_MODE) {
             Toast.makeText(
                 this,
-                "⚠️ TEST MODE - Using Yandex demo ads\nLong press header for Debug Panel",
+                "⚠️ TEST MODE\nLong press header = Debug Panel\nTap banner 5x = Live Logs",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -171,7 +196,7 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         } else {
             val readPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-            val writePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            val writePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
             readPermission && writePermission
         }
     }

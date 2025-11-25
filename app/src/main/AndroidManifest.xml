@@ -14,13 +14,16 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
-    <!-- Internet for Yandex Ads (with Unity Ads adapter) -->
+    <!-- Internet for Yandex Ads -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- AD_ID permission for ads (required for Android 13+) -->
-    <!-- Yandex SDK 7.16.1 adds this automatically, but keeping it explicit -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
+    <!-- READ_LOGS permission for in-app log viewer (optional for debugging) -->
+    <uses-permission android:name="android.permission.READ_LOGS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:name=".StatusSaverApp"
@@ -66,6 +69,13 @@
             android:screenOrientation="portrait"
             android:hardwareAccelerated="true"
             android:parentActivityName=".MainActivity" />
+
+        <!-- Log Viewer Activity (for debugging ads) -->
+        <activity
+            android:name=".LogViewerActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
     </application>
 

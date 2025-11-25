@@ -34,11 +34,11 @@
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toStartOf="parent" />
 
-            <!-- Media View (for images/videos) - Must be at least 300x160 dp -->
+            <!-- Media View (for images/videos) - MUST be at least 300x160 dp per Yandex docs -->
             <com.yandex.mobile.ads.nativeads.MediaView
                 android:id="@+id/mediaView"
                 android:layout_width="match_parent"
-                android:layout_height="240dp"
+                android:layout_height="300dp"
                 android:background="@color/card_background"
                 app:layout_constraintTop_toTopOf="parent" />
 
@@ -149,7 +149,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <!-- FIXED: Changed from RatingView to TextView -->
             <TextView
                 android:id="@+id/ratingView"
                 android:layout_width="0dp"

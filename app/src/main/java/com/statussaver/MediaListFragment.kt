@@ -100,16 +100,7 @@ class MediaListFragment : Fragment() {
 
         val spanCount = getSpanCount(requireContext())
         binding.recyclerView.apply {
-            layoutManager = GridLayoutManager(requireContext(), spanCount).apply {
-                spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int {
-                        return when (adapter?.getItemViewType(position)) {
-                            1 -> spanCount // Native ad takes full width
-                            else -> 1 // Media items take 1 column
-                        }
-                    }
-                }
-            }
+            layoutManager = GridLayoutManager(requireContext(), spanCount)
             adapter = this@MediaListFragment.adapter
         }
     }
@@ -126,13 +117,9 @@ class MediaListFragment : Fragment() {
 
                 withContext(Dispatchers.Main) {
                     if (mediaList.isNotEmpty()) {
-                        // CRITICAL FIX: Wait for Yandex to be ready before setting media
-                        YandexAdsManager.onReady {
-                            Log.d(TAG, "Yandex ready - setting media items for native ads")
-                            binding.progressBar.visibility = View.GONE
-                            binding.recyclerView.visibility = View.VISIBLE
-                            adapter.setMediaItems(mediaList)
-                        }
+                        binding.progressBar.visibility = View.GONE
+                        binding.recyclerView.visibility = View.VISIBLE
+                        adapter.submitList(mediaList)
                     } else {
                         binding.progressBar.visibility = View.GONE
                         binding.emptyState.visibility = View.VISIBLE

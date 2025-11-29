@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
@@ -21,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,6 +30,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "MainActivity"
         private const val PREFS_NAME = "AppPrefs"
         private const val KEY_FIRST_LAUNCH = "isFirstLaunch"
+        private const val KEY_LANGUAGE = "app_language"
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -39,6 +42,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Apply saved language before setContentView
+        applySavedLanguage()
+        
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -57,6 +64,13 @@ class MainActivity : AppCompatActivity() {
                 bannerAdManager.loadBanner(binding.adContainer)
             }
         }
+
+        // ========== LANGUAGE TOGGLE BUTTON ==========
+        binding.languageToggle.setOnClickListener {
+            showLanguageDialog()
+        }
+        updateLanguageButtonText()
+        // ============================================
 
         // Check permissions
         if (checkPermissions()) {
@@ -84,6 +98,56 @@ class MainActivity : AppCompatActivity() {
             interstitialAdManager.trackAppInteraction()
             showMediaFragment("AUDIO")
         }
+    }
+
+    private fun applySavedLanguage() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val languageCode = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
+        setLocale(languageCode, false)
+    }
+
+    private fun setLocale(languageCode: String, recreate: Boolean = true) {
+        val locale = Locale(languageCode)
+        Locale.setDefault(locale)
+        
+        val config = Configuration(resources.configuration)
+        config.setLocale(locale)
+        
+        resources.updateConfiguration(config, resources.displayMetrics)
+        
+        // Save preference
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_LANGUAGE, languageCode).apply()
+        
+        if (recreate) {
+            recreate() // Restart activity to apply language
+        }
+    }
+
+    private fun updateLanguageButtonText() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val currentLang = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
+        binding.languageToggle.text = if (currentLang == "ru") "RU" else "EN"
+    }
+
+    private fun showLanguageDialog() {
+        val languages = arrayOf("English", "Русский")
+        val languageCodes = arrayOf("en", "ru")
+        
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val currentLang = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
+        val currentIndex = languageCodes.indexOf(currentLang)
+        
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.language))
+            .setSingleChoiceItems(languages, currentIndex) { dialog, which ->
+                if (languageCodes[which] != currentLang) {
+                    setLocale(languageCodes[which])
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
     }
 
     private fun isFirstLaunch(): Boolean {

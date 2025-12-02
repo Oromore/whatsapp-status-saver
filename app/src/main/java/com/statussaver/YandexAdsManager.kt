@@ -20,7 +20,7 @@ object YandexAdsManager {
     // ========== TESTING TOGGLE ==========
     // Set to TRUE for testing (uses Yandex demo ads that work worldwide)
     // Set to FALSE for production (uses your real ad units)
-    const val TEST_MODE = true // <-- CHANGE THIS TO false BEFORE RUSTORE UPLOAD!
+    const val TEST_MODE = false // <-- CHANGE THIS TO false BEFORE RUSTORE UPLOAD!
     
     @Volatile
     private var isInitialized = false

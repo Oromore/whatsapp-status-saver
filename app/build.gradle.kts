@@ -8,12 +8,12 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.whatsappstatusdownloader.app"
+        applicationId = "com.statussave.app"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-        
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         setProperty("archivesBaseName", "Status-Saver-2026")
     }
@@ -83,7 +83,7 @@ dependencies {
     // ========== YANDEX MOBILE ADS ONLY (For RuStore) ==========
     // Yandex Mobile Ads SDK 7.16.1 - Latest version
     implementation("com.yandex.android:mobileads:7.16.1")
-    
+
     // NO Unity Ads adapter - Pure Yandex only!
 
     // Coroutines - Latest

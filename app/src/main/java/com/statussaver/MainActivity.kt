@@ -45,6 +45,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
+    // Track which flow user is in
+    private var userHasRegularWhatsApp = false
+
     // SAF Folder Picker for WhatsApp
     private val whatsappFolderPicker = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -56,11 +59,16 @@ class MainActivity : AppCompatActivity() {
             val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             contentResolver.takePersistableUriPermission(uri, takeFlags)
             
-            // Now try WhatsApp Business
-            requestWhatsAppBusinessAccess()
+            // If user has regular WhatsApp, ask about Business
+            if (userHasRegularWhatsApp) {
+                askAboutWhatsAppBusiness()
+            } else {
+                // User only uses Business, we're done
+                loadStatuses()
+            }
         } ?: run {
             Log.e(TAG, "No folder selected for WhatsApp")
-            Toast.makeText(this, "Folder access required", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Folder access required to view statuses", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -173,9 +181,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestFolderAccess() {
+        // Step 1: Ask if user has regular WhatsApp
+        AlertDialog.Builder(this)
+            .setTitle("WhatsApp Status Access")
+            .setMessage("Do you use regular WhatsApp?")
+            .setPositiveButton("Yes") { _, _ ->
+                userHasRegularWhatsApp = true
+                showRegularWhatsAppInstructions()
+            }
+            .setNegativeButton("No") { _, _ ->
+                userHasRegularWhatsApp = false
+                showBusinessWhatsAppInstructions()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun showRegularWhatsAppInstructions() {
         AlertDialog.Builder(this)
             .setTitle("Grant Access to WhatsApp Statuses")
-            .setMessage("To view WhatsApp statuses, you need to grant folder access.\n\nNext steps:\n\n1️⃣ Tap 'Continue' below\n2️⃣ Tap the blue 'USE THIS FOLDER' button\n3️⃣ Tap 'ALLOW' to confirm\n\nThat's it! The correct folder is already selected for you.")
+            .setMessage("To view WhatsApp statuses, grant folder access.\n\nNext steps:\n\n1️⃣ Tap 'Continue' below\n2️⃣ Tap the blue 'USE THIS FOLDER' button\n3️⃣ Tap 'ALLOW' to confirm\n\nThe correct folder is already selected for you.")
             .setPositiveButton("Continue") { _, _ ->
                 requestWhatsAppAccess()
             }
@@ -185,63 +210,50 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun requestWhatsAppAccess() {
-        try {
-            // Try primary path first (Android 11+ WhatsApp)
-            val initialUri = DocumentsContract.buildDocumentUri(
-                "com.android.externalstorage.documents",
-                "primary:Android/media/com.whatsapp/WhatsApp/Media/.Statuses"
-            )
-            
-            whatsappFolderPicker.launch(initialUri)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error opening primary folder picker", e)
-            // Fallback: Try legacy path
-            try {
-                val legacyUri = DocumentsContract.buildDocumentUri(
-                    "com.android.externalstorage.documents",
-                    "primary:WhatsApp/Media/.Statuses"
-                )
-                whatsappFolderPicker.launch(legacyUri)
-            } catch (e2: Exception) {
-                Log.e(TAG, "Error opening legacy folder picker", e2)
-                // Last resort: open at root and let user navigate
-                AlertDialog.Builder(this)
-                    .setTitle("Manual Selection Needed")
-                    .setMessage("Please navigate to:\nAndroid → media → com.whatsapp → WhatsApp → Media → .Statuses\n\nThen tap 'Use this folder'")
-                    .setPositiveButton("OK") { _, _ ->
-                        whatsappFolderPicker.launch(null)
-                    }
-                    .show()
+    private fun showBusinessWhatsAppInstructions() {
+        AlertDialog.Builder(this)
+            .setTitle("Grant Access to WhatsApp Business Statuses")
+            .setMessage("To view WhatsApp Business statuses, grant folder access.\n\nNext steps:\n\n1️⃣ Tap 'Continue' below\n2️⃣ Tap the blue 'USE THIS FOLDER' button\n3️⃣ Tap 'ALLOW' to confirm\n\nThe correct folder is already selected for you.")
+            .setPositiveButton("Continue") { _, _ ->
+                requestWhatsAppBusinessAccess()
             }
-        }
+            .setNegativeButton("Cancel") { _, _ ->
+                showEmptyState()
+            }
+            .show()
     }
 
-    private fun requestWhatsAppBusinessAccess() {
+    private fun askAboutWhatsAppBusiness() {
         AlertDialog.Builder(this)
-            .setTitle("WhatsApp Business (Optional)")
-            .setMessage("Do you also use WhatsApp Business? If yes, grant access to its status folder too.")
-            .setPositiveButton("Yes") { _, _ ->
-                try {
-                    // Build URI pointing directly to WhatsApp Business status folder
-                    val initialUri = DocumentsContract.buildDocumentUri(
-                        "com.android.externalstorage.documents",
-                        "primary:Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses"
-                    )
-                    whatsappBusinessFolderPicker.launch(initialUri)
-                } catch (e: Exception) {
-                    try {
-                        val uri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3AAndroid%2Fmedia%2Fcom.whatsapp.w4b%2FWhatsApp%20Business%2FMedia%2F.Statuses")
-                        whatsappBusinessFolderPicker.launch(uri)
-                    } catch (e2: Exception) {
-                        whatsappBusinessFolderPicker.launch(null)
-                    }
-                }
+            .setTitle("WhatsApp Business")
+            .setMessage("Do you also use WhatsApp Business?")
+            .setPositiveButton("Yes (Grant Access)") { _, _ ->
+                showBusinessWhatsAppInstructions()
             }
             .setNegativeButton("No") { _, _ ->
+                // User only uses regular WhatsApp, we're done
                 loadStatuses()
             }
             .show()
+    }
+
+    private fun requestWhatsAppAccess() {
+        // Open folder picker directly at WhatsApp .Statuses folder (internal storage only)
+        val initialUri = DocumentsContract.buildDocumentUri(
+            "com.android.externalstorage.documents",
+            "primary:Android/media/com.whatsapp/WhatsApp/Media/.Statuses"
+        )
+        
+        whatsappFolderPicker.launch(initialUri)
+    }
+
+    private fun requestWhatsAppBusinessAccess() {
+        // Open folder picker directly at WhatsApp Business .Statuses folder
+        val initialUri = DocumentsContract.buildDocumentUri(
+            "com.android.externalstorage.documents",
+            "primary:Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses"
+        )
+        whatsappBusinessFolderPicker.launch(initialUri)
     }
 
     private fun applySavedLanguage() {

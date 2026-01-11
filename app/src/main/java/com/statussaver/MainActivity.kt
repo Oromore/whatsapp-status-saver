@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -25,7 +24,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -33,7 +31,6 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "MainActivity"
         private const val PREFS_NAME = "AppPrefs"
         private const val KEY_FIRST_LAUNCH = "isFirstLaunch"
-        private const val KEY_LANGUAGE = "app_language"
         private const val KEY_WHATSAPP_URI = "whatsapp_uri"
         private const val KEY_WHATSAPP_BUSINESS_URI = "whatsapp_business_uri"
     }
@@ -58,7 +55,7 @@ class MainActivity : AppCompatActivity() {
             // Grant persistent permission
             val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             contentResolver.takePersistableUriPermission(uri, takeFlags)
-            
+
             // If user has regular WhatsApp, ask about Business
             if (userHasRegularWhatsApp) {
                 askAboutWhatsAppBusiness()
@@ -89,9 +86,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        applySavedLanguage()
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -103,21 +97,15 @@ class MainActivity : AppCompatActivity() {
         bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
 
-        // Load banner when Yandex is ready
-        YandexAdsManager.onReady {
-            Log.d(TAG, "Yandex ready - loading banner")
+        // Wait for Unity Ads ready, then load PERMANENT banner
+        UnityAdsManager.onReady {
+            Log.d(TAG, "Unity Ads ready - loading PERMANENT banner")
             runOnUiThread {
                 bannerAdManager.loadBanner(binding.adContainer)
             }
         }
 
-        // Language toggle
-        binding.languageToggle.setOnClickListener {
-            showLanguageDialog()
-        }
-        updateLanguageButtonText()
-
-        // Check permissions
+        // Check permissions and load statuses
         if (checkBasicPermissions()) {
             // Check if we have SAF permissions
             if (!hasFolderPermissions()) {
@@ -133,7 +121,7 @@ class MainActivity : AppCompatActivity() {
             requestBasicPermissions()
         }
 
-        // Button click listeners
+        // Set up click listeners - switch to fragments instead of new activities
         binding.btnImages.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
             showMediaFragment("IMAGE")
@@ -243,7 +231,6 @@ class MainActivity : AppCompatActivity() {
             "com.android.externalstorage.documents",
             "primary:Android/media/com.whatsapp/WhatsApp/Media/.Statuses"
         )
-        
         whatsappFolderPicker.launch(initialUri)
     }
 
@@ -254,55 +241,6 @@ class MainActivity : AppCompatActivity() {
             "primary:Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses"
         )
         whatsappBusinessFolderPicker.launch(initialUri)
-    }
-
-    private fun applySavedLanguage() {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val languageCode = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
-        setLocale(languageCode, false)
-    }
-
-    private fun setLocale(languageCode: String, recreate: Boolean = true) {
-        val locale = Locale(languageCode)
-        Locale.setDefault(locale)
-
-        val config = Configuration(resources.configuration)
-        config.setLocale(locale)
-
-        resources.updateConfiguration(config, resources.displayMetrics)
-
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_LANGUAGE, languageCode).apply()
-
-        if (recreate) {
-            recreate()
-        }
-    }
-
-    private fun updateLanguageButtonText() {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val currentLang = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
-        binding.languageToggle.text = if (currentLang == "ru") "RU" else "EN"
-    }
-
-    private fun showLanguageDialog() {
-        val languages = arrayOf("English", "Русский")
-        val languageCodes = arrayOf("en", "ru")
-
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val currentLang = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
-        val currentIndex = languageCodes.indexOf(currentLang)
-
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.language))
-            .setSingleChoiceItems(languages, currentIndex) { dialog, which ->
-                if (languageCodes[which] != currentLang) {
-                    setLocale(languageCodes[which])
-                }
-                dialog.dismiss()
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
     }
 
     private fun isFirstLaunch(): Boolean {
@@ -319,6 +257,7 @@ class MainActivity : AppCompatActivity() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_privacy_policy, null)
         val privacyTextView = dialogView.findViewById<TextView>(R.id.privacyPolicyText)
 
+        // Make TextView scrollable
         privacyTextView.movementMethod = ScrollingMovementMethod()
         privacyTextView.text = getString(R.string.privacy_policy_content)
 
@@ -337,9 +276,12 @@ class MainActivity : AppCompatActivity() {
     private fun showMediaFragment(mediaType: String) {
         Log.d(TAG, "Showing $mediaType fragment")
 
+        // Hide ONLY the header and home content (NOT the ad container!)
         binding.header.visibility = View.GONE
         binding.homeContent.visibility = View.GONE
+        // Ad container ALWAYS stays visible - never touch it!
 
+        // Show fragment in fragmentContainer
         val fragment = MediaListFragment.newInstance(mediaType)
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
@@ -349,13 +291,17 @@ class MainActivity : AppCompatActivity() {
     fun showHomeScreen() {
         Log.d(TAG, "Showing home screen")
 
+        // Remove fragment
         supportFragmentManager.fragments.forEach {
             supportFragmentManager.beginTransaction().remove(it).commit()
         }
 
+        // Show header and home screen again
         binding.header.visibility = View.VISIBLE
         binding.homeContent.visibility = View.VISIBLE
+        // Ad container ALWAYS stays visible!
 
+        // Reload status counts
         if (checkBasicPermissions() && hasFolderPermissions()) {
             loadStatuses()
         }
@@ -363,10 +309,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkBasicPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         } else {
+            // Android 12 and below
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
     }
@@ -465,9 +413,11 @@ class MainActivity : AppCompatActivity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        // If fragment is showing, go back to home
         if (supportFragmentManager.fragments.isNotEmpty()) {
             showHomeScreen()
         } else {
+            // Otherwise, exit app
             super.onBackPressed()
         }
     }
@@ -475,6 +425,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         Log.d(TAG, "=== onDestroy ===")
 
+        // Only destroy banner if activity is finishing (app closing)
         if (isFinishing) {
             Log.d(TAG, "App closing - destroying banner")
             bannerAdManager.destroy()

@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.statussavah"
+    namespace = "com.statussaver"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.whatsappstatusdownloader.app"
+        applicationId = "com.statuskeeper.app"
         minSdk = 23
         targetSdk = 34
         versionCode = 1

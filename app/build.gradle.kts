@@ -11,13 +11,16 @@ android {
         applicationId = "com.statuskeeper.app"
         minSdk = 23
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 1
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Updated app name
         setProperty("archivesBaseName", "Status-Saver-2026")
     }
 
+    // Signing configuration for release builds
     signingConfigs {
         create("release") {
             storeFile = file("../release-key.jks")
@@ -39,11 +42,14 @@ android {
         debug {
             applicationIdSuffix = ".debug"
         }
-    }                                                                  
+    }
+
+    // Updated APK naming
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = defaultConfig.versionName
+            // Format: Status-Saver-2026-v1.0.apk
             output.outputFileName = "Status-Saver-2026-v${versionName}.apk"
         }
     }
@@ -60,7 +66,8 @@ android {
     buildFeatures {
         viewBinding = true
     }
-}                                                                      
+}
+
 dependencies {
     // AndroidX Core - Latest
     implementation("androidx.core:core-ktx:1.15.0")
@@ -81,10 +88,8 @@ dependencies {
     // Glide for image loading - Latest
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
-    // ========== YANDEX MOBILE ADS ONLY (For RuStore) ==========
-    // Yandex Mobile Ads SDK 7.16.1 - Latest version
-    implementation("com.yandex.android:mobileads:7.16.1")
-                                                                           // NO Unity Ads adapter - Pure Yandex only!
+    // Unity Ads - Updated to 4.16.3
+    implementation("com.unity3d.ads:unity-ads:4.16.3")
 
     // Coroutines - Latest
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

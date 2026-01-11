@@ -2,9 +2,9 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, huawei-unity ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, huawei-unity ]
   workflow_dispatch:
 
 jobs:
@@ -14,20 +14,20 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
-      
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-      
+
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
-      
+
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:

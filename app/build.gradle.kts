@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.statussaver"
+    namespace = "com.statussavah"
     compileSdk = 35
 
     defaultConfig {

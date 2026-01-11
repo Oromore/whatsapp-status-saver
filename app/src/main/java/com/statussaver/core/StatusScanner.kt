@@ -11,6 +11,9 @@ import androidx.documentfile.provider.DocumentFile
 class StatusScanner(private val context: Context) {
 
     private val TAG = "StatusScanner"
+    private val PREFS_NAME = "AppPrefs"
+    private val KEY_WHATSAPP_URI = "whatsapp_uri"
+    private val KEY_WHATSAPP_BUSINESS_URI = "whatsapp_business_uri"
 
     /**
      * Main function: Scans all WhatsApp folders and returns organized media
@@ -21,19 +24,21 @@ class StatusScanner(private val context: Context) {
 
         Log.d(TAG, "=== Starting Status Scan ===")
 
-        // Get saved URIs from MainActivity
-        val mainActivity = context as? MainActivity
-        val whatsappUri = mainActivity?.getWhatsAppUri()
-        val whatsappBusinessUri = mainActivity?.getWhatsAppBusinessUri()
+        // Get saved URIs from SharedPreferences
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val whatsappUriString = prefs.getString(KEY_WHATSAPP_URI, null)
+        val whatsappBusinessUriString = prefs.getString(KEY_WHATSAPP_BUSINESS_URI, null)
 
         // Scan regular WhatsApp
-        whatsappUri?.let { uri ->
+        whatsappUriString?.let { uriString ->
+            val uri = Uri.parse(uriString)
             Log.d(TAG, "Scanning WhatsApp: $uri")
             allMedia.addAll(scanFolder(uri, "WhatsApp"))
         } ?: Log.w(TAG, "No WhatsApp URI found")
 
         // Scan WhatsApp Business
-        whatsappBusinessUri?.let { uri ->
+        whatsappBusinessUriString?.let { uriString ->
+            val uri = Uri.parse(uriString)
             Log.d(TAG, "Scanning WhatsApp Business: $uri")
             allMedia.addAll(scanFolder(uri, "WhatsApp Business"))
         }
@@ -132,12 +137,13 @@ class StatusScanner(private val context: Context) {
      * Quick check: Are there any statuses available?
      */
     fun hasStatuses(): Boolean {
-        val mainActivity = context as? MainActivity
-        val whatsappUri = mainActivity?.getWhatsAppUri()
-        val whatsappBusinessUri = mainActivity?.getWhatsAppBusinessUri()
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val whatsappUriString = prefs.getString(KEY_WHATSAPP_URI, null)
+        val whatsappBusinessUriString = prefs.getString(KEY_WHATSAPP_BUSINESS_URI, null)
 
-        return listOfNotNull(whatsappUri, whatsappBusinessUri).any { uri ->
+        return listOfNotNull(whatsappUriString, whatsappBusinessUriString).any { uriString ->
             try {
+                val uri = Uri.parse(uriString)
                 val documentFile = DocumentFile.fromTreeUri(context, uri)
                 documentFile?.exists() == true && 
                 documentFile.isDirectory && 

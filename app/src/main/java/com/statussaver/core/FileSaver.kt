@@ -2,12 +2,12 @@ package com.statussaver.core
 
 import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 
 /**
@@ -25,6 +25,8 @@ class FileSaver(private val context: Context) {
         return try {
             Log.d(TAG, "Attempting to save: ${item.fileName}")
             Log.d(TAG, "Android version: ${Build.VERSION.SDK_INT}")
+            Log.d(TAG, "Item path: ${item.path}")
+            Log.d(TAG, "Item URI: ${item.uri}")
 
             val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // Android 10+ (Scoped Storage)
@@ -64,17 +66,21 @@ class FileSaver(private val context: Context) {
             }
 
             val resolver = context.contentResolver
-            val uri = resolver.insert(collection, contentValues)
+            val destUri = resolver.insert(collection, contentValues)
 
-            if (uri == null) {
+            if (destUri == null) {
                 Log.e(TAG, "Failed to create MediaStore entry")
                 return false
             }
 
-            Log.d(TAG, "Created MediaStore URI: $uri")
+            Log.d(TAG, "Created MediaStore URI: $destUri")
 
-            resolver.openOutputStream(uri)?.use { outputStream ->
-                FileInputStream(File(item.path)).use { inputStream ->
+            // Get source URI
+            val sourceUri = item.uri ?: Uri.parse(item.path)
+
+            // Copy using content resolver
+            resolver.openOutputStream(destUri)?.use { outputStream ->
+                resolver.openInputStream(sourceUri)?.use { inputStream ->
                     val bytes = inputStream.copyTo(outputStream)
                     Log.d(TAG, "Copied $bytes bytes")
                 }
@@ -119,21 +125,27 @@ class FileSaver(private val context: Context) {
             val destFile = File(statusDir, item.fileName)
             Log.d(TAG, "Destination file: ${destFile.absolutePath}")
 
-            // Check if source file exists
-            val sourceFile = File(item.path)
-            if (!sourceFile.exists()) {
-                Log.e(TAG, "Source file doesn't exist: ${item.path}")
-                return false
-            }
-
-            Log.d(TAG, "Source file size: ${sourceFile.length()} bytes")
-
-            // Copy file
-            FileInputStream(sourceFile).use { input ->
-                FileOutputStream(destFile).use { output ->
-                    val bytes = input.copyTo(output)
-                    Log.d(TAG, "Copied $bytes bytes to destination")
+            // Get source URI
+            val sourceUri = item.uri ?: Uri.parse(item.path)
+            
+            // Copy using content resolver for URI, or direct file for path
+            if (item.uri != null || item.path.startsWith("content://")) {
+                // Use ContentResolver
+                context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                    FileOutputStream(destFile).use { output ->
+                        val bytes = input.copyTo(output)
+                        Log.d(TAG, "Copied $bytes bytes via URI")
+                    }
                 }
+            } else {
+                // Legacy: Direct file copy
+                val sourceFile = File(item.path)
+                if (!sourceFile.exists()) {
+                    Log.e(TAG, "Source file doesn't exist: ${item.path}")
+                    return false
+                }
+                sourceFile.copyTo(destFile, overwrite = true)
+                Log.d(TAG, "Copied via direct file")
             }
 
             if (!destFile.exists()) {

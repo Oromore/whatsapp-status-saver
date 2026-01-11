@@ -5,13 +5,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -31,6 +34,8 @@ class MainActivity : AppCompatActivity() {
         private const val PREFS_NAME = "AppPrefs"
         private const val KEY_FIRST_LAUNCH = "isFirstLaunch"
         private const val KEY_LANGUAGE = "app_language"
+        private const val KEY_WHATSAPP_URI = "whatsapp_uri"
+        private const val KEY_WHATSAPP_BUSINESS_URI = "whatsapp_business_uri"
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -40,12 +45,45 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
+    // SAF Folder Picker for WhatsApp
+    private val whatsappFolderPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let {
+            Log.d(TAG, "WhatsApp folder selected: $uri")
+            saveWhatsAppUri(uri)
+            // Grant persistent permission
+            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            contentResolver.takePersistableUriPermission(uri, takeFlags)
+            
+            // Now try WhatsApp Business
+            requestWhatsAppBusinessAccess()
+        } ?: run {
+            Log.e(TAG, "No folder selected for WhatsApp")
+            Toast.makeText(this, "Folder access required", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // SAF Folder Picker for WhatsApp Business
+    private val whatsappBusinessFolderPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let {
+            Log.d(TAG, "WhatsApp Business folder selected: $uri")
+            saveWhatsAppBusinessUri(uri)
+            // Grant persistent permission
+            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            contentResolver.takePersistableUriPermission(uri, takeFlags)
+        }
+        // Load statuses regardless of whether business folder was selected
+        loadStatuses()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Apply saved language before setContentView
+
         applySavedLanguage()
-        
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -65,22 +103,26 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // ========== LANGUAGE TOGGLE BUTTON ==========
+        // Language toggle
         binding.languageToggle.setOnClickListener {
             showLanguageDialog()
         }
         updateLanguageButtonText()
-        // ============================================
 
         // Check permissions
-        if (checkPermissions()) {
-            if (isFirstLaunch()) {
-                showPrivacyPolicyDialog()
+        if (checkBasicPermissions()) {
+            // Check if we have SAF permissions
+            if (!hasFolderPermissions()) {
+                if (isFirstLaunch()) {
+                    showPrivacyPolicyDialog()
+                } else {
+                    requestFolderAccess()
+                }
             } else {
                 loadStatuses()
             }
         } else {
-            requestPermissions()
+            requestBasicPermissions()
         }
 
         // Button click listeners
@@ -100,6 +142,108 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun hasFolderPermissions(): Boolean {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val whatsappUri = prefs.getString(KEY_WHATSAPP_URI, null)
+        return whatsappUri != null
+    }
+
+    private fun saveWhatsAppUri(uri: Uri) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_WHATSAPP_URI, uri.toString()).apply()
+        Log.d(TAG, "Saved WhatsApp URI: $uri")
+    }
+
+    private fun saveWhatsAppBusinessUri(uri: Uri) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_WHATSAPP_BUSINESS_URI, uri.toString()).apply()
+        Log.d(TAG, "Saved WhatsApp Business URI: $uri")
+    }
+
+    fun getWhatsAppUri(): Uri? {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val uriString = prefs.getString(KEY_WHATSAPP_URI, null)
+        return uriString?.let { Uri.parse(it) }
+    }
+
+    fun getWhatsAppBusinessUri(): Uri? {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val uriString = prefs.getString(KEY_WHATSAPP_BUSINESS_URI, null)
+        return uriString?.let { Uri.parse(it) }
+    }
+
+    private fun requestFolderAccess() {
+        AlertDialog.Builder(this)
+            .setTitle("Grant Access to WhatsApp Statuses")
+            .setMessage("To view WhatsApp statuses, you need to grant folder access.\n\nNext steps:\n\n1️⃣ Tap 'Continue' below\n2️⃣ Tap the blue 'USE THIS FOLDER' button\n3️⃣ Tap 'ALLOW' to confirm\n\nThat's it! The correct folder is already selected for you.")
+            .setPositiveButton("Continue") { _, _ ->
+                requestWhatsAppAccess()
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                showEmptyState()
+            }
+            .show()
+    }
+
+    private fun requestWhatsAppAccess() {
+        try {
+            // Try primary path first (Android 11+ WhatsApp)
+            val initialUri = DocumentsContract.buildDocumentUri(
+                "com.android.externalstorage.documents",
+                "primary:Android/media/com.whatsapp/WhatsApp/Media/.Statuses"
+            )
+            
+            whatsappFolderPicker.launch(initialUri)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error opening primary folder picker", e)
+            // Fallback: Try legacy path
+            try {
+                val legacyUri = DocumentsContract.buildDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:WhatsApp/Media/.Statuses"
+                )
+                whatsappFolderPicker.launch(legacyUri)
+            } catch (e2: Exception) {
+                Log.e(TAG, "Error opening legacy folder picker", e2)
+                // Last resort: open at root and let user navigate
+                AlertDialog.Builder(this)
+                    .setTitle("Manual Selection Needed")
+                    .setMessage("Please navigate to:\nAndroid → media → com.whatsapp → WhatsApp → Media → .Statuses\n\nThen tap 'Use this folder'")
+                    .setPositiveButton("OK") { _, _ ->
+                        whatsappFolderPicker.launch(null)
+                    }
+                    .show()
+            }
+        }
+    }
+
+    private fun requestWhatsAppBusinessAccess() {
+        AlertDialog.Builder(this)
+            .setTitle("WhatsApp Business (Optional)")
+            .setMessage("Do you also use WhatsApp Business? If yes, grant access to its status folder too.")
+            .setPositiveButton("Yes") { _, _ ->
+                try {
+                    // Build URI pointing directly to WhatsApp Business status folder
+                    val initialUri = DocumentsContract.buildDocumentUri(
+                        "com.android.externalstorage.documents",
+                        "primary:Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses"
+                    )
+                    whatsappBusinessFolderPicker.launch(initialUri)
+                } catch (e: Exception) {
+                    try {
+                        val uri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3AAndroid%2Fmedia%2Fcom.whatsapp.w4b%2FWhatsApp%20Business%2FMedia%2F.Statuses")
+                        whatsappBusinessFolderPicker.launch(uri)
+                    } catch (e2: Exception) {
+                        whatsappBusinessFolderPicker.launch(null)
+                    }
+                }
+            }
+            .setNegativeButton("No") { _, _ ->
+                loadStatuses()
+            }
+            .show()
+    }
+
     private fun applySavedLanguage() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val languageCode = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
@@ -109,18 +253,17 @@ class MainActivity : AppCompatActivity() {
     private fun setLocale(languageCode: String, recreate: Boolean = true) {
         val locale = Locale(languageCode)
         Locale.setDefault(locale)
-        
+
         val config = Configuration(resources.configuration)
         config.setLocale(locale)
-        
+
         resources.updateConfiguration(config, resources.displayMetrics)
-        
-        // Save preference
+
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putString(KEY_LANGUAGE, languageCode).apply()
-        
+
         if (recreate) {
-            recreate() // Restart activity to apply language
+            recreate()
         }
     }
 
@@ -133,11 +276,11 @@ class MainActivity : AppCompatActivity() {
     private fun showLanguageDialog() {
         val languages = arrayOf("English", "Русский")
         val languageCodes = arrayOf("en", "ru")
-        
+
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val currentLang = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
         val currentIndex = languageCodes.indexOf(currentLang)
-        
+
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.language))
             .setSingleChoiceItems(languages, currentIndex) { dialog, which ->
@@ -174,7 +317,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton(getString(R.string.privacy_continue)) { dialog, _ ->
                 dialog.dismiss()
                 setFirstLaunchComplete()
-                loadStatuses()
+                requestFolderAccess()
             }
             .show()
     }
@@ -201,24 +344,22 @@ class MainActivity : AppCompatActivity() {
         binding.header.visibility = View.VISIBLE
         binding.homeContent.visibility = View.VISIBLE
 
-        if (checkPermissions()) {
+        if (checkBasicPermissions() && hasFolderPermissions()) {
             loadStatuses()
         }
     }
 
-    private fun checkPermissions(): Boolean {
+    private fun checkBasicPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         } else {
-            val readPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-            val writePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-            readPermission && writePermission
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
     }
 
-    private fun requestPermissions() {
+    private fun requestBasicPermissions() {
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.permission_required))
             .setMessage(getString(R.string.permission_message))
@@ -252,8 +393,12 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                if (isFirstLaunch()) {
-                    showPrivacyPolicyDialog()
+                if (!hasFolderPermissions()) {
+                    if (isFirstLaunch()) {
+                        showPrivacyPolicyDialog()
+                    } else {
+                        requestFolderAccess()
+                    }
                 } else {
                     loadStatuses()
                 }

@@ -2,11 +2,15 @@ package com.statussaver.core
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import java.io.File
 
 /**
- * THE BRAIN: Scans WhatsApp status folders using SAF
+ * THE BRAIN: Scans WhatsApp status folders
+ * Supports both old (File API) and new (SAF) methods
  */
 class StatusScanner(private val context: Context) {
 
@@ -14,6 +18,17 @@ class StatusScanner(private val context: Context) {
     private val PREFS_NAME = "AppPrefs"
     private val KEY_WHATSAPP_URI = "whatsapp_uri"
     private val KEY_WHATSAPP_BUSINESS_URI = "whatsapp_business_uri"
+
+    // Old paths for Android 10 and below
+    private val legacyWhatsappPaths = listOf(
+        "/WhatsApp/Media/.Statuses",
+        "/Android/media/com.whatsapp/WhatsApp/Media/.Statuses"
+    )
+
+    private val legacyWhatsappBusinessPaths = listOf(
+        "/WhatsApp Business/Media/.Statuses",
+        "/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses"
+    )
 
     /**
      * Main function: Scans all WhatsApp folders and returns organized media
@@ -23,24 +38,16 @@ class StatusScanner(private val context: Context) {
         val allMedia = mutableListOf<MediaItem>()
 
         Log.d(TAG, "=== Starting Status Scan ===")
+        Log.d(TAG, "Android Version: ${Build.VERSION.SDK_INT}")
 
-        // Get saved URIs from SharedPreferences
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val whatsappUriString = prefs.getString(KEY_WHATSAPP_URI, null)
-        val whatsappBusinessUriString = prefs.getString(KEY_WHATSAPP_BUSINESS_URI, null)
-
-        // Scan regular WhatsApp
-        whatsappUriString?.let { uriString ->
-            val uri = Uri.parse(uriString)
-            Log.d(TAG, "Scanning WhatsApp: $uri")
-            allMedia.addAll(scanFolder(uri, "WhatsApp"))
-        } ?: Log.w(TAG, "No WhatsApp URI found")
-
-        // Scan WhatsApp Business
-        whatsappBusinessUriString?.let { uriString ->
-            val uri = Uri.parse(uriString)
-            Log.d(TAG, "Scanning WhatsApp Business: $uri")
-            allMedia.addAll(scanFolder(uri, "WhatsApp Business"))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ → Use SAF
+            Log.d(TAG, "Using SAF method (Android 11+)")
+            allMedia.addAll(scanUsingSAF())
+        } else {
+            // Android 10 and below → Use File API
+            Log.d(TAG, "Using File API method (Android 10 and below)")
+            allMedia.addAll(scanUsingFileAPI())
         }
 
         Log.d(TAG, "Total media found: ${allMedia.size}")
@@ -58,40 +65,84 @@ class StatusScanner(private val context: Context) {
     }
 
     /**
-     * Scans a specific folder using DocumentFile
+     * Scan using SAF (Android 11+)
      */
-    private fun scanFolder(treeUri: Uri, source: String): List<MediaItem> {
+    private fun scanUsingSAF(): List<MediaItem> {
+        val mediaList = mutableListOf<MediaItem>()
+
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val whatsappUriString = prefs.getString(KEY_WHATSAPP_URI, null)
+        val whatsappBusinessUriString = prefs.getString(KEY_WHATSAPP_BUSINESS_URI, null)
+
+        // Scan regular WhatsApp
+        whatsappUriString?.let { uriString ->
+            val uri = Uri.parse(uriString)
+            Log.d(TAG, "Scanning WhatsApp via SAF: $uri")
+            mediaList.addAll(scanFolderSAF(uri, "WhatsApp"))
+        } ?: Log.w(TAG, "No WhatsApp URI found")
+
+        // Scan WhatsApp Business
+        whatsappBusinessUriString?.let { uriString ->
+            val uri = Uri.parse(uriString)
+            Log.d(TAG, "Scanning WhatsApp Business via SAF: $uri")
+            mediaList.addAll(scanFolderSAF(uri, "WhatsApp Business"))
+        }
+
+        return mediaList
+    }
+
+    /**
+     * Scan using File API (Android 10 and below)
+     */
+    private fun scanUsingFileAPI(): List<MediaItem> {
+        val mediaList = mutableListOf<MediaItem>()
+
+        // Scan regular WhatsApp
+        legacyWhatsappPaths.forEach { path ->
+            mediaList.addAll(scanFolderFile(path, "WhatsApp"))
+        }
+
+        // Scan WhatsApp Business
+        legacyWhatsappBusinessPaths.forEach { path ->
+            mediaList.addAll(scanFolderFile(path, "WhatsApp Business"))
+        }
+
+        return mediaList
+    }
+
+    /**
+     * Scan a folder using SAF (for Android 11+)
+     */
+    private fun scanFolderSAF(treeUri: Uri, source: String): List<MediaItem> {
         val mediaList = mutableListOf<MediaItem>()
 
         try {
-            val documentFile = DocumentFile.fromTreeUri(context, treeUri)
-            
-            if (documentFile == null) {
-                Log.e(TAG, "DocumentFile is null for $source")
+            val rootFolder = DocumentFile.fromTreeUri(context, treeUri)
+
+            if (rootFolder == null) {
+                Log.e(TAG, "Root folder is null for $source")
                 return emptyList()
             }
 
-            if (!documentFile.exists()) {
-                Log.e(TAG, "Folder doesn't exist for $source")
+            // Try to find .Statuses subfolder (in case user selected Media folder)
+            val statusFolder = rootFolder.findFile(".Statuses") ?: rootFolder
+
+            if (!statusFolder.exists() || !statusFolder.isDirectory) {
+                Log.e(TAG, "Status folder not found or not a directory for $source")
                 return emptyList()
             }
 
-            if (!documentFile.isDirectory) {
-                Log.e(TAG, "Not a directory for $source")
-                return emptyList()
-            }
-
-            Log.d(TAG, "Scanning folder: ${documentFile.name}")
+            Log.d(TAG, "Scanning SAF folder: ${statusFolder.name}")
 
             // Get all files in folder
-            val files = documentFile.listFiles()
+            val files = statusFolder.listFiles()
             Log.d(TAG, "Found ${files.size} files in $source")
 
             files.forEach { file ->
                 if (file.isFile && !file.name.isNullOrEmpty() && !file.name!!.startsWith(".nomedia")) {
                     val fileName = file.name ?: return@forEach
                     val mediaType = getMediaType(fileName)
-                    
+
                     if (mediaType != null) {
                         val uri = file.uri
                         val size = file.length()
@@ -101,23 +152,69 @@ class StatusScanner(private val context: Context) {
 
                         mediaList.add(
                             MediaItem(
-                                path = uri.toString(), // Store URI as string
+                                path = uri.toString(),
                                 fileName = fileName,
                                 type = mediaType,
                                 size = size,
                                 dateModified = dateModified,
-                                uri = uri // Store actual URI
+                                uri = uri
                             )
                         )
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error scanning $source", e)
+            Log.e(TAG, "Error scanning $source via SAF", e)
             e.printStackTrace()
         }
 
-        // Sort by date (newest first)
+        return mediaList.sortedByDescending { it.dateModified }
+    }
+
+    /**
+     * Scan a folder using File API (for Android 10 and below)
+     */
+    private fun scanFolderFile(relativePath: String, source: String): List<MediaItem> {
+        val mediaList = mutableListOf<MediaItem>()
+
+        try {
+            val storageDir = Environment.getExternalStorageDirectory()
+            val statusFolder = File(storageDir, relativePath)
+
+            if (!statusFolder.exists() || !statusFolder.isDirectory) {
+                Log.d(TAG, "Folder doesn't exist: ${statusFolder.absolutePath}")
+                return emptyList()
+            }
+
+            Log.d(TAG, "Scanning File folder: ${statusFolder.absolutePath}")
+
+            val files = statusFolder.listFiles() ?: return emptyList()
+            Log.d(TAG, "Found ${files.size} files in $source")
+
+            files.forEach { file ->
+                if (file.isFile && !file.name.startsWith(".nomedia")) {
+                    val mediaType = getMediaType(file.name)
+                    if (mediaType != null) {
+                        Log.d(TAG, "Found media: ${file.name} (${mediaType.name})")
+
+                        mediaList.add(
+                            MediaItem(
+                                path = file.absolutePath,
+                                fileName = file.name,
+                                type = mediaType,
+                                size = file.length(),
+                                dateModified = file.lastModified(),
+                                uri = Uri.fromFile(file)
+                            )
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error scanning $source via File API", e)
+            e.printStackTrace()
+        }
+
         return mediaList.sortedByDescending { it.dateModified }
     }
 
@@ -137,19 +234,31 @@ class StatusScanner(private val context: Context) {
      * Quick check: Are there any statuses available?
      */
     fun hasStatuses(): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val whatsappUriString = prefs.getString(KEY_WHATSAPP_URI, null)
-        val whatsappBusinessUriString = prefs.getString(KEY_WHATSAPP_BUSINESS_URI, null)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Check SAF
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val whatsappUriString = prefs.getString(KEY_WHATSAPP_URI, null)
+            val whatsappBusinessUriString = prefs.getString(KEY_WHATSAPP_BUSINESS_URI, null)
 
-        return listOfNotNull(whatsappUriString, whatsappBusinessUriString).any { uriString ->
-            try {
-                val uri = Uri.parse(uriString)
-                val documentFile = DocumentFile.fromTreeUri(context, uri)
-                documentFile?.exists() == true && 
-                documentFile.isDirectory && 
-                (documentFile.listFiles().isNotEmpty())
-            } catch (e: Exception) {
-                false
+            return listOfNotNull(whatsappUriString, whatsappBusinessUriString).any { uriString ->
+                try {
+                    val uri = Uri.parse(uriString)
+                    val documentFile = DocumentFile.fromTreeUri(context, uri)
+                    val statusFolder = documentFile?.findFile(".Statuses") ?: documentFile
+                    statusFolder?.exists() == true &&
+                    statusFolder.isDirectory &&
+                    (statusFolder.listFiles().isNotEmpty())
+                } catch (e: Exception) {
+                    false
+                }
+            }
+        } else {
+            // Check File API
+            val allPaths = legacyWhatsappPaths + legacyWhatsappBusinessPaths
+            return allPaths.any { path ->
+                val storageDir = Environment.getExternalStorageDirectory()
+                val folder = File(storageDir, path)
+                folder.exists() && folder.isDirectory && (folder.listFiles()?.isNotEmpty() == true)
             }
         }
     }

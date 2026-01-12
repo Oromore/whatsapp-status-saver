@@ -52,15 +52,12 @@ class MainActivity : AppCompatActivity() {
         uri?.let {
             Log.d(TAG, "WhatsApp folder selected: $uri")
             saveWhatsAppUri(uri)
-            // Grant persistent permission
             val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             contentResolver.takePersistableUriPermission(uri, takeFlags)
 
-            // If user has regular WhatsApp, ask about Business
             if (userHasRegularWhatsApp) {
                 askAboutWhatsAppBusiness()
             } else {
-                // User only uses Business, we're done
                 loadStatuses()
             }
         } ?: run {
@@ -76,11 +73,9 @@ class MainActivity : AppCompatActivity() {
         uri?.let {
             Log.d(TAG, "WhatsApp Business folder selected: $uri")
             saveWhatsAppBusinessUri(uri)
-            // Grant persistent permission
             val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             contentResolver.takePersistableUriPermission(uri, takeFlags)
         }
-        // Load statuses regardless of whether business folder was selected
         loadStatuses()
     }
 
@@ -90,6 +85,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         Log.d(TAG, "=== MainActivity onCreate ===")
+        Log.d(TAG, "Android Version: ${Build.VERSION.SDK_INT}")
 
         scanner = StatusScanner(this)
 
@@ -105,21 +101,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Check permissions and load statuses
-        if (checkBasicPermissions()) {
-            // Check if we have SAF permissions
-            if (!hasFolderPermissions()) {
-                if (isFirstLaunch()) {
-                    showPrivacyPolicyDialog()
-                } else {
-                    requestFolderAccess()
-                }
-            } else {
-                loadStatuses()
-            }
-        } else {
-            requestBasicPermissions()
-        }
+        // Check permissions based on Android version
+        handleInitialPermissions()
 
         // Set up click listeners - switch to fragments instead of new activities
         binding.btnImages.setOnClickListener {
@@ -135,6 +118,38 @@ class MainActivity : AppCompatActivity() {
         binding.btnAudio.setOnClickListener {
             interstitialAdManager.trackAppInteraction()
             showMediaFragment("AUDIO")
+        }
+    }
+
+    private fun handleInitialPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ → Need SAF folder access
+            Log.d(TAG, "Android 11+ detected - using SAF")
+            if (checkBasicPermissions()) {
+                if (!hasFolderPermissions()) {
+                    if (isFirstLaunch()) {
+                        showPrivacyPolicyDialog()
+                    } else {
+                        requestFolderAccess()
+                    }
+                } else {
+                    loadStatuses()
+                }
+            } else {
+                requestBasicPermissions()
+            }
+        } else {
+            // Android 10 and below → Use old File API
+            Log.d(TAG, "Android 10 or below detected - using File API")
+            if (checkBasicPermissions()) {
+                if (isFirstLaunch()) {
+                    showPrivacyPolicyDialog()
+                } else {
+                    loadStatuses()
+                }
+            } else {
+                requestBasicPermissions()
+            }
         }
     }
 
@@ -156,20 +171,7 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "Saved WhatsApp Business URI: $uri")
     }
 
-    fun getWhatsAppUri(): Uri? {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val uriString = prefs.getString(KEY_WHATSAPP_URI, null)
-        return uriString?.let { Uri.parse(it) }
-    }
-
-    fun getWhatsAppBusinessUri(): Uri? {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val uriString = prefs.getString(KEY_WHATSAPP_BUSINESS_URI, null)
-        return uriString?.let { Uri.parse(it) }
-    }
-
     private fun requestFolderAccess() {
-        // Step 1: Ask if user has regular WhatsApp
         AlertDialog.Builder(this)
             .setTitle("WhatsApp Status Access")
             .setMessage("Do you use regular WhatsApp?")
@@ -219,28 +221,32 @@ class MainActivity : AppCompatActivity() {
                 showBusinessWhatsAppInstructions()
             }
             .setNegativeButton("No") { _, _ ->
-                // User only uses regular WhatsApp, we're done
                 loadStatuses()
             }
             .show()
     }
 
     private fun requestWhatsAppAccess() {
-        // Open folder picker directly at WhatsApp .Statuses folder (internal storage only)
-        val initialUri = DocumentsContract.buildDocumentUri(
+        // Point to Media folder (not .Statuses directly) to avoid Xiaomi blocks
+        val folderPath = "Android/media/com.whatsapp/WhatsApp/Media"
+
+        val treeUri = DocumentsContract.buildTreeDocumentUri(
             "com.android.externalstorage.documents",
-            "primary:Android/media/com.whatsapp/WhatsApp/Media/.Statuses"
+            "primary:$folderPath"
         )
-        whatsappFolderPicker.launch(initialUri)
+
+        whatsappFolderPicker.launch(treeUri)
     }
 
     private fun requestWhatsAppBusinessAccess() {
-        // Open folder picker directly at WhatsApp Business .Statuses folder
-        val initialUri = DocumentsContract.buildDocumentUri(
+        val folderPath = "Android/media/com.whatsapp.w4b/WhatsApp Business/Media"
+
+        val treeUri = DocumentsContract.buildTreeDocumentUri(
             "com.android.externalstorage.documents",
-            "primary:Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses"
+            "primary:$folderPath"
         )
-        whatsappBusinessFolderPicker.launch(initialUri)
+
+        whatsappBusinessFolderPicker.launch(treeUri)
     }
 
     private fun isFirstLaunch(): Boolean {
@@ -268,7 +274,13 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton(getString(R.string.privacy_continue)) { dialog, _ ->
                 dialog.dismiss()
                 setFirstLaunchComplete()
-                requestFolderAccess()
+
+                // After privacy policy, check which method to use
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    requestFolderAccess()
+                } else {
+                    loadStatuses()
+                }
             }
             .show()
     }
@@ -302,8 +314,14 @@ class MainActivity : AppCompatActivity() {
         // Ad container ALWAYS stays visible!
 
         // Reload status counts
-        if (checkBasicPermissions() && hasFolderPermissions()) {
-            loadStatuses()
+        if (checkBasicPermissions()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (hasFolderPermissions()) {
+                    loadStatuses()
+                }
+            } else {
+                loadStatuses()
+            }
         }
     }
 
@@ -353,15 +371,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                if (!hasFolderPermissions()) {
-                    if (isFirstLaunch()) {
-                        showPrivacyPolicyDialog()
-                    } else {
-                        requestFolderAccess()
-                    }
-                } else {
-                    loadStatuses()
-                }
+                handleInitialPermissions()
             } else {
                 Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
                 showEmptyState()

@@ -227,24 +227,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestWhatsAppAccess() {
-        // Point to Media folder (not .Statuses directly) to avoid Xiaomi blocks
-        val folderPath = "Android/media/com.whatsapp/WhatsApp/Media"
-
+        // Point to storage root to avoid "Can't use this folder" error
         val treeUri = DocumentsContract.buildTreeDocumentUri(
             "com.android.externalstorage.documents",
-            "primary:$folderPath"
+            "primary:"
         )
+
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            putExtra(DocumentsContract.EXTRA_INITIAL_URI, treeUri)
+            putExtra("android.content.extra.SHOW_ADVANCED", true)
+        }
 
         whatsappFolderPicker.launch(treeUri)
     }
 
     private fun requestWhatsAppBusinessAccess() {
-        val folderPath = "Android/media/com.whatsapp.w4b/WhatsApp Business/Media"
-
+        // Point to storage root - same permission covers both
         val treeUri = DocumentsContract.buildTreeDocumentUri(
             "com.android.externalstorage.documents",
-            "primary:$folderPath"
+            "primary:"
         )
+
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            putExtra(DocumentsContract.EXTRA_INITIAL_URI, treeUri)
+            putExtra("android.content.extra.SHOW_ADVANCED", true)
+        }
 
         whatsappBusinessFolderPicker.launch(treeUri)
     }

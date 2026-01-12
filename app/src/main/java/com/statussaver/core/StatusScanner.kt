@@ -112,6 +112,7 @@ class StatusScanner(private val context: Context) {
 
     /**
      * Scan a folder using SAF (for Android 11+)
+     * Uses "tunneling" to access restricted Android/media folders
      */
     private fun scanFolderSAF(treeUri: Uri, source: String): List<MediaItem> {
         val mediaList = mutableListOf<MediaItem>()
@@ -124,15 +125,23 @@ class StatusScanner(private val context: Context) {
                 return emptyList()
             }
 
-            // Try to find .Statuses subfolder (in case user selected Media folder)
-            val statusFolder = rootFolder.findFile(".Statuses") ?: rootFolder
+            Log.d(TAG, "Starting tunnel into restricted folder for $source")
 
-            if (!statusFolder.exists() || !statusFolder.isDirectory) {
-                Log.e(TAG, "Status folder not found or not a directory for $source")
+            // Tunnel through the restricted path that Android blocks in the UI
+            val statusFolder = rootFolder
+                .findFile("Android")
+                ?.findFile("media")
+                ?.findFile(if (source == "WhatsApp") "com.whatsapp" else "com.whatsapp.w4b")
+                ?.findFile(if (source == "WhatsApp") "WhatsApp" else "WhatsApp Business")
+                ?.findFile("Media")
+                ?.findFile(".Statuses")
+
+            if (statusFolder == null || !statusFolder.exists() || !statusFolder.isDirectory) {
+                Log.e(TAG, "Tunneling failed: .Statuses not found for $source")
                 return emptyList()
             }
 
-            Log.d(TAG, "Scanning SAF folder: ${statusFolder.name}")
+            Log.d(TAG, "Successfully tunneled into: ${statusFolder.uri}")
 
             // Get all files in folder
             val files = statusFolder.listFiles()
@@ -164,7 +173,7 @@ class StatusScanner(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error scanning $source via SAF", e)
+            Log.e(TAG, "Error scanning $source via SAF tunnel", e)
             e.printStackTrace()
         }
 

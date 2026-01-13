@@ -112,7 +112,7 @@ class StatusScanner(private val context: Context) {
 
     /**
      * Scan a folder using SAF (for Android 11+)
-     * Uses "tunneling" to access restricted Android/media folders
+     * Uses manual iteration to bypass findFile() blindness
      */
     private fun scanFolderSAF(treeUri: Uri, source: String): List<MediaItem> {
         val mediaList = mutableListOf<MediaItem>()
@@ -125,23 +125,54 @@ class StatusScanner(private val context: Context) {
                 return emptyList()
             }
 
-            Log.d(TAG, "Starting tunnel into restricted folder for $source")
+            val targetPkg = if (source == "WhatsApp") "com.whatsapp" else "com.whatsapp.w4b"
+            val targetMainFolder = if (source == "WhatsApp") "WhatsApp" else "WhatsApp Business"
 
-            // Tunnel through the restricted path that Android blocks in the UI
-            val statusFolder = rootFolder
-                .findFile("Android")
-                ?.findFile("media")
-                ?.findFile(if (source == "WhatsApp") "com.whatsapp" else "com.whatsapp.w4b")
-                ?.findFile(if (source == "WhatsApp") "WhatsApp" else "WhatsApp Business")
-                ?.findFile("Media")
-                ?.findFile(".Statuses")
+            Log.d(TAG, "Starting manual tunnel for $source")
 
-            if (statusFolder == null || !statusFolder.exists() || !statusFolder.isDirectory) {
+            // HELPER: Search for a folder manually by name (more reliable than findFile)
+            fun findFolderManually(parent: DocumentFile?, name: String): DocumentFile? {
+                if (parent == null) return null
+                return parent.listFiles().find { 
+                    it.name?.equals(name, ignoreCase = true) == true && it.isDirectory 
+                }
+            }
+
+            // Deep Tunneling - Manual iteration through each level
+            val androidDir = findFolderManually(rootFolder, "Android")
+            Log.d(TAG, "Android dir found: ${androidDir != null}")
+
+            val mediaDir = findFolderManually(androidDir, "media")
+            Log.d(TAG, "media dir found: ${mediaDir != null}")
+
+            val pkgDir = findFolderManually(mediaDir, targetPkg)
+            Log.d(TAG, "$targetPkg dir found: ${pkgDir != null}")
+
+            val waDir = findFolderManually(pkgDir, targetMainFolder)
+            Log.d(TAG, "$targetMainFolder dir found: ${waDir != null}")
+
+            val waMediaDir = findFolderManually(waDir, "Media")
+            Log.d(TAG, "Media dir found: ${waMediaDir != null}")
+
+            // Final destination: .Statuses is often hidden
+            var statusFolder = findFolderManually(waMediaDir, ".Statuses")
+            Log.d(TAG, ".Statuses dir found in new path: ${statusFolder != null}")
+
+            // FALLBACK: Try legacy path (root/WhatsApp/Media/.Statuses)
+            if (statusFolder == null) {
+                Log.d(TAG, "Trying legacy path for $source")
+                val legacyWaDir = findFolderManually(rootFolder, targetMainFolder)
+                val legacyMediaDir = findFolderManually(legacyWaDir, "Media")
+                statusFolder = findFolderManually(legacyMediaDir, ".Statuses")
+                Log.d(TAG, ".Statuses found in legacy path: ${statusFolder != null}")
+            }
+
+            if (statusFolder == null || !statusFolder.exists()) {
                 Log.e(TAG, "Tunneling failed: .Statuses not found for $source")
                 return emptyList()
             }
 
-            Log.d(TAG, "Successfully tunneled into: ${statusFolder.uri}")
+            Log.d(TAG, "Successfully reached .Statuses for $source: ${statusFolder.uri}")
 
             // Get all files in folder
             val files = statusFolder.listFiles()

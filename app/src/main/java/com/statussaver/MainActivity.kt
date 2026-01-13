@@ -42,41 +42,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
-    // Track which flow user is in
-    private var userHasRegularWhatsApp = false
-
-    // SAF Folder Picker for WhatsApp
-    private val whatsappFolderPicker = registerForActivityResult(
+    // SAF Folder Picker - Single "Master Key" for both WhatsApp types
+    private val folderPicker = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         uri?.let {
-            Log.d(TAG, "WhatsApp folder selected: $uri")
+            Log.d(TAG, "Storage root selected: $uri")
             saveWhatsAppUri(uri)
+            // Also save as business URI - same root permission covers both!
+            saveWhatsAppBusinessUri(uri)
+            
             val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             contentResolver.takePersistableUriPermission(uri, takeFlags)
 
-            if (userHasRegularWhatsApp) {
-                askAboutWhatsAppBusiness()
-            } else {
-                loadStatuses()
-            }
+            loadStatuses()
         } ?: run {
-            Log.e(TAG, "No folder selected for WhatsApp")
+            Log.e(TAG, "No folder selected")
             Toast.makeText(this, "Folder access required to view statuses", Toast.LENGTH_LONG).show()
         }
-    }
-
-    // SAF Folder Picker for WhatsApp Business
-    private val whatsappBusinessFolderPicker = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let {
-            Log.d(TAG, "WhatsApp Business folder selected: $uri")
-            saveWhatsAppBusinessUri(uri)
-            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            contentResolver.takePersistableUriPermission(uri, takeFlags)
-        }
-        loadStatuses()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -173,61 +156,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestFolderAccess() {
         AlertDialog.Builder(this)
-            .setTitle("WhatsApp Status Access")
-            .setMessage("Do you use regular WhatsApp?")
-            .setPositiveButton("Yes") { _, _ ->
-                userHasRegularWhatsApp = true
-                showRegularWhatsAppInstructions()
+            .setTitle("Grant Folder Access")
+            .setMessage("To view WhatsApp statuses, you need to grant folder access.\n\nIMPORTANT:\n• The folder picker will open\n• DO NOT navigate to any folder\n• Simply tap 'USE THIS FOLDER' immediately\n• Then tap 'ALLOW'\n\nThis gives access to both WhatsApp and WhatsApp Business automatically.")
+            .setPositiveButton("Continue") { _, _ ->
+                requestStorageAccess()
             }
-            .setNegativeButton("No") { _, _ ->
-                userHasRegularWhatsApp = false
-                showBusinessWhatsAppInstructions()
+            .setNegativeButton("Cancel") { _, _ ->
+                showEmptyState()
             }
             .setCancelable(false)
             .show()
     }
 
-    private fun showRegularWhatsAppInstructions() {
-        AlertDialog.Builder(this)
-            .setTitle("Grant Access to WhatsApp Statuses")
-            .setMessage("To view WhatsApp statuses, grant folder access.\n\nNext steps:\n\n1️⃣ Tap 'Continue' below\n2️⃣ Tap the blue 'USE THIS FOLDER' button\n3️⃣ Tap 'ALLOW' to confirm\n\nThe correct folder is already selected for you.")
-            .setPositiveButton("Continue") { _, _ ->
-                requestWhatsAppAccess()
-            }
-            .setNegativeButton("Cancel") { _, _ ->
-                showEmptyState()
-            }
-            .show()
-    }
-
-    private fun showBusinessWhatsAppInstructions() {
-        AlertDialog.Builder(this)
-            .setTitle("Grant Access to WhatsApp Business Statuses")
-            .setMessage("To view WhatsApp Business statuses, grant folder access.\n\nNext steps:\n\n1️⃣ Tap 'Continue' below\n2️⃣ Tap the blue 'USE THIS FOLDER' button\n3️⃣ Tap 'ALLOW' to confirm\n\nThe correct folder is already selected for you.")
-            .setPositiveButton("Continue") { _, _ ->
-                requestWhatsAppBusinessAccess()
-            }
-            .setNegativeButton("Cancel") { _, _ ->
-                showEmptyState()
-            }
-            .show()
-    }
-
-    private fun askAboutWhatsAppBusiness() {
-        AlertDialog.Builder(this)
-            .setTitle("WhatsApp Business")
-            .setMessage("Do you also use WhatsApp Business?")
-            .setPositiveButton("Yes (Grant Access)") { _, _ ->
-                showBusinessWhatsAppInstructions()
-            }
-            .setNegativeButton("No") { _, _ ->
-                loadStatuses()
-            }
-            .show()
-    }
-
-    private fun requestWhatsAppAccess() {
-        // Point to storage root to avoid "Can't use this folder" error
+    private fun requestStorageAccess() {
+        // Point to storage root - "Master Key" for everything
         val treeUri = DocumentsContract.buildTreeDocumentUri(
             "com.android.externalstorage.documents",
             "primary:"
@@ -238,22 +180,7 @@ class MainActivity : AppCompatActivity() {
             putExtra("android.content.extra.SHOW_ADVANCED", true)
         }
 
-        whatsappFolderPicker.launch(treeUri)
-    }
-
-    private fun requestWhatsAppBusinessAccess() {
-        // Point to storage root - same permission covers both
-        val treeUri = DocumentsContract.buildTreeDocumentUri(
-            "com.android.externalstorage.documents",
-            "primary:"
-        )
-
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            putExtra(DocumentsContract.EXTRA_INITIAL_URI, treeUri)
-            putExtra("android.content.extra.SHOW_ADVANCED", true)
-        }
-
-        whatsappBusinessFolderPicker.launch(treeUri)
+        folderPicker.launch(treeUri)
     }
 
     private fun isFirstLaunch(): Boolean {

@@ -11,8 +11,8 @@ android {
         applicationId = "com.statussave.app"
         minSdk = 23
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = project.property("VERSION_CODE").toString().toInt()
+        versionName = project.property("VERSION_NAME").toString()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         setProperty("archivesBaseName", "Status-Saver-2026")
@@ -75,7 +75,7 @@ dependencies {
 
     // RecyclerView - Latest
     implementation("androidx.recyclerview:recyclerview:1.3.2")
-
+    
     // DocumentFile - For SAF (Storage Access Framework) - ADDED FOR ANDROID 11+ SUPPORT
     implementation("androidx.documentfile:documentfile:1.0.1")
 

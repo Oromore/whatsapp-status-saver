@@ -39,7 +39,7 @@ android {
         debug {
             applicationIdSuffix = ".debug"
         }
-    }                                                                  
+    }
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
@@ -60,7 +60,8 @@ android {
     buildFeatures {
         viewBinding = true
     }
-}                                                                      
+}
+
 dependencies {
     // AndroidX Core - Latest
     implementation("androidx.core:core-ktx:1.15.0")
@@ -81,10 +82,15 @@ dependencies {
     // Glide for image loading - Latest
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
+    // ========== APPMETRICA ANALYTICS SDK ==========
+    // AppMetrica SDK 7.13.0 - Latest version
+    implementation("io.appmetrica.analytics:analytics:7.13.0")
+
     // ========== YANDEX MOBILE ADS ONLY (For RuStore) ==========
     // Yandex Mobile Ads SDK 7.16.1 - Latest version
     implementation("com.yandex.android:mobileads:7.16.1")
-                                                                           // NO Unity Ads adapter - Pure Yandex only!
+
+    // NO Unity Ads adapter - Pure Yandex only!
 
     // Coroutines - Latest
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

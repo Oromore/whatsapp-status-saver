@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.Settings
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
@@ -32,11 +33,13 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "MainActivity"
         private const val PREFS_NAME = "AppPrefs"
         private const val KEY_FIRST_LAUNCH = "isFirstLaunch"
-        private const val PERMISSION_REQUEST_CODE = 100
+        private const val KEY_WHATSAPP_URI = "whatsapp_uri"
+        private const val KEY_WHATSAPP_BUSINESS_URI = "whatsapp_business_uri"
     }
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var scanner: StatusScanner
+    private val PERMISSION_REQUEST_CODE = 100
 
     private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
@@ -47,13 +50,38 @@ class MainActivity : AppCompatActivity() {
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (Environment.isExternalStorageManager()) {
-                Log.d(TAG, "MANAGE_EXTERNAL_STORAGE granted!")
+                Log.d(TAG, "✅ MANAGE_EXTERNAL_STORAGE granted")
                 loadStatuses()
             } else {
-                Log.e(TAG, "MANAGE_EXTERNAL_STORAGE denied")
+                Log.e(TAG, "❌ MANAGE_EXTERNAL_STORAGE denied")
                 Toast.makeText(this, "Storage permission is required to view statuses", Toast.LENGTH_LONG).show()
-                showEmptyState()
+                // Fallback to MediaStore or SAF
+                handlePermissionDenied()
             }
+        }
+    }
+
+    // SAF Folder Picker (fallback if MANAGE_EXTERNAL_STORAGE is denied)
+    private val folderPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let {
+            Log.d(TAG, "Storage root selected: $uri")
+            saveWhatsAppUri(uri)
+            saveWhatsAppBusinessUri(uri)
+
+            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            try {
+                contentResolver.takePersistableUriPermission(uri, takeFlags)
+                Log.d(TAG, "Persistent URI permission granted")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to take persistent permission", e)
+            }
+
+            loadStatuses()
+        } ?: run {
+            Log.e(TAG, "No folder selected")
+            showEmptyState()
         }
     }
 
@@ -71,15 +99,14 @@ class MainActivity : AppCompatActivity() {
         bannerAdManager = BannerAdManager(this)
         interstitialAdManager = InterstitialAdManager(this)
 
-        // Wait for Unity Ads ready, then load PERMANENT banner
         UnityAdsManager.onReady {
-            Log.d(TAG, "Unity Ads ready - loading PERMANENT banner")
+            Log.d(TAG, "Unity Ads ready - loading banner")
             runOnUiThread {
                 bannerAdManager.loadBanner(binding.adContainer)
             }
         }
 
-        // Check permissions based on Android version
+        // Handle permissions
         handleInitialPermissions()
 
         // Set up click listeners
@@ -101,26 +128,29 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleInitialPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ → Need MANAGE_EXTERNAL_STORAGE
-            Log.d(TAG, "Android 11+ detected - checking MANAGE_EXTERNAL_STORAGE")
-            if (Environment.isExternalStorageManager()) {
-                Log.d(TAG, "MANAGE_EXTERNAL_STORAGE already granted")
-                if (isFirstLaunch()) {
-                    showPrivacyPolicyDialog()
-                } else {
+            // Android 11+ → Request MANAGE_EXTERNAL_STORAGE first
+            Log.d(TAG, "Android 11+ detected")
+            
+            if (checkBasicPermissions()) {
+                if (Environment.isExternalStorageManager()) {
+                    // Already has MANAGE_EXTERNAL_STORAGE
+                    Log.d(TAG, "✅ Already has MANAGE_EXTERNAL_STORAGE")
                     loadStatuses()
+                } else {
+                    // Need to request MANAGE_EXTERNAL_STORAGE
+                    if (isFirstLaunch()) {
+                        showPrivacyPolicyDialog()
+                    } else {
+                        requestManageExternalStorage()
+                    }
                 }
             } else {
-                Log.d(TAG, "MANAGE_EXTERNAL_STORAGE not granted")
-                if (isFirstLaunch()) {
-                    showPrivacyPolicyDialog()
-                } else {
-                    requestManageStoragePermission()
-                }
+                // Request basic permissions first
+                requestBasicPermissions()
             }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // Android 6-10 → Use READ/WRITE_EXTERNAL_STORAGE
-            Log.d(TAG, "Android 6-10 detected - using standard permissions")
+        } else {
+            // Android 10 and below → Use old permissions
+            Log.d(TAG, "Android 10 or below detected")
             if (checkBasicPermissions()) {
                 if (isFirstLaunch()) {
                     showPrivacyPolicyDialog()
@@ -128,62 +158,150 @@ class MainActivity : AppCompatActivity() {
                     loadStatuses()
                 }
             } else {
-                if (isFirstLaunch()) {
-                    showPrivacyPolicyDialog()
-                } else {
-                    requestBasicPermissions()
-                }
-            }
-        } else {
-            // Android 5 and below - no runtime permissions needed
-            Log.d(TAG, "Android 5 or below - no runtime permissions needed")
-            if (isFirstLaunch()) {
-                showPrivacyPolicyDialog()
-            } else {
-                loadStatuses()
+                requestBasicPermissions()
             }
         }
+    }
+
+    /**
+     * Request MANAGE_EXTERNAL_STORAGE permission (Android 11+)
+     */
+    private fun requestManageExternalStorage() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            AlertDialog.Builder(this)
+                .setTitle("Storage Permission Required")
+                .setMessage("This app needs full storage access to view WhatsApp statuses.\n\n" +
+                        "In the next screen:\n" +
+                        "1. Find this app in the list\n" +
+                        "2. Toggle 'Allow access to manage all files' to ON\n" +
+                        "3. Come back to the app")
+                .setPositiveButton("Grant Permission") { _, _ ->
+                    try {
+                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                        intent.data = Uri.parse("package:$packageName")
+                        manageStorageLauncher.launch(intent)
+                    } catch (e: Exception) {
+                        // Some devices don't support the specific app settings
+                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                        manageStorageLauncher.launch(intent)
+                    }
+                }
+                .setNegativeButton("Cancel") { _, _ ->
+                    handlePermissionDenied()
+                }
+                .setCancelable(false)
+                .show()
+        }
+    }
+
+    /**
+     * Handle case when MANAGE_EXTERNAL_STORAGE is denied
+     * Fall back to MediaStore + SAF
+     */
+    private fun handlePermissionDenied() {
+        AlertDialog.Builder(this)
+            .setTitle("Alternative Access Method")
+            .setMessage("Without full storage permission, the app will:\n\n" +
+                    "1. Try to find statuses using MediaStore (works on most devices)\n" +
+                    "2. If that fails, ask you to manually grant folder access\n\n" +
+                    "Some features may be limited.")
+            .setPositiveButton("Continue") { _, _ ->
+                // Try MediaStore first (it might work without MANAGE_EXTERNAL_STORAGE)
+                loadStatuses()
+            }
+            .setNegativeButton("Try SAF Access") { _, _ ->
+                requestFolderAccess()
+            }
+            .show()
+    }
+
+    /**
+     * Request SAF folder access (fallback method)
+     */
+    private fun requestFolderAccess() {
+        AlertDialog.Builder(this)
+            .setTitle("Grant Folder Access")
+            .setMessage("Please grant access to the storage root:\n\n" +
+                    "1. DO NOT navigate anywhere\n" +
+                    "2. Simply tap 'USE THIS FOLDER'\n" +
+                    "3. Then tap 'ALLOW'")
+            .setPositiveButton("Continue") { _, _ ->
+                requestStorageAccess()
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                showEmptyState()
+            }
+            .show()
+    }
+
+    private fun requestStorageAccess() {
+        val treeUri = DocumentsContract.buildTreeDocumentUri(
+            "com.android.externalstorage.documents",
+            "primary:"
+        )
+
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            putExtra(DocumentsContract.EXTRA_INITIAL_URI, treeUri)
+            putExtra("android.content.extra.SHOW_ADVANCED", true)
+        }
+
+        folderPicker.launch(treeUri)
+    }
+
+    private fun saveWhatsAppUri(uri: Uri) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_WHATSAPP_URI, uri.toString()).apply()
+        Log.d(TAG, "Saved WhatsApp URI: $uri")
+    }
+
+    private fun saveWhatsAppBusinessUri(uri: Uri) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_WHATSAPP_BUSINESS_URI, uri.toString()).apply()
+        Log.d(TAG, "Saved WhatsApp Business URI: $uri")
+    }
+
+    private fun isFirstLaunch(): Boolean {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_FIRST_LAUNCH, true)
+    }
+
+    private fun setFirstLaunchComplete() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply()
+    }
+
+    private fun showPrivacyPolicyDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_privacy_policy, null)
+        val privacyTextView = dialogView.findViewById<TextView>(R.id.privacyPolicyText)
+
+        privacyTextView.movementMethod = ScrollingMovementMethod()
+        privacyTextView.text = getString(R.string.privacy_policy_content)
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.privacy_policy_title))
+            .setView(dialogView)
+            .setCancelable(false)
+            .setPositiveButton(getString(R.string.privacy_continue)) { dialog, _ ->
+                dialog.dismiss()
+                setFirstLaunchComplete()
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    requestManageExternalStorage()
+                } else {
+                    loadStatuses()
+                }
+            }
+            .show()
     }
 
     private fun checkBasicPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         } else {
-            // Android 6-12
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
-    }
-
-    private fun requestManageStoragePermission() {
-        AlertDialog.Builder(this)
-            .setTitle("Storage Permission Required")
-            .setMessage("To view WhatsApp statuses, this app needs permission to access all files.\n\n" +
-                    "Steps:\n" +
-                    "1. Tap 'Grant Permission' below\n" +
-                    "2. Find '${getString(R.string.app_name)}' in the list\n" +
-                    "3. Enable 'Allow access to manage all files'\n\n" +
-                    "This permission is needed because WhatsApp stores statuses in a protected folder.")
-            .setPositiveButton("Grant Permission") { _, _ ->
-                try {
-                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                        data = Uri.parse("package:$packageName")
-                    }
-                    manageStorageLauncher.launch(intent)
-                } catch (e: Exception) {
-                    // Fallback to general settings if specific intent fails
-                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                    manageStorageLauncher.launch(intent)
-                }
-            }
-            .setNegativeButton("Cancel") { _, _ ->
-                Toast.makeText(this, "Permission required to view statuses", Toast.LENGTH_SHORT).show()
-                showEmptyState()
-            }
-            .setCancelable(false)
-            .show()
     }
 
     private fun requestBasicPermissions() {
@@ -220,96 +338,11 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                loadStatuses()
+                handleInitialPermissions()
             } else {
                 Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
                 showEmptyState()
             }
-        }
-    }
-
-    private fun isFirstLaunch(): Boolean {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean(KEY_FIRST_LAUNCH, true)
-    }
-
-    private fun setFirstLaunchComplete() {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply()
-    }
-
-    private fun showPrivacyPolicyDialog() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_privacy_policy, null)
-        val privacyTextView = dialogView.findViewById<TextView>(R.id.privacyPolicyText)
-
-        privacyTextView.movementMethod = ScrollingMovementMethod()
-        privacyTextView.text = getString(R.string.privacy_policy_content)
-
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.privacy_policy_title))
-            .setView(dialogView)
-            .setCancelable(false)
-            .setPositiveButton(getString(R.string.privacy_continue)) { dialog, _ ->
-                dialog.dismiss()
-                setFirstLaunchComplete()
-
-                // After privacy policy, check permissions
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    if (!Environment.isExternalStorageManager()) {
-                        requestManageStoragePermission()
-                    } else {
-                        loadStatuses()
-                    }
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    if (!checkBasicPermissions()) {
-                        requestBasicPermissions()
-                    } else {
-                        loadStatuses()
-                    }
-                } else {
-                    loadStatuses()
-                }
-            }
-            .show()
-    }
-
-    private fun showMediaFragment(mediaType: String) {
-        Log.d(TAG, "Showing $mediaType fragment")
-
-        // Hide header and home content
-        binding.header.visibility = View.GONE
-        binding.homeContent.visibility = View.GONE
-
-        // Show fragment
-        val fragment = MediaListFragment.newInstance(mediaType)
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, fragment)
-            .commit()
-    }
-
-    fun showHomeScreen() {
-        Log.d(TAG, "Showing home screen")
-
-        // Remove fragment
-        supportFragmentManager.fragments.forEach {
-            supportFragmentManager.beginTransaction().remove(it).commit()
-        }
-
-        // Show header and home content
-        binding.header.visibility = View.VISIBLE
-        binding.homeContent.visibility = View.VISIBLE
-
-        // Reload status counts
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (Environment.isExternalStorageManager()) {
-                loadStatuses()
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkBasicPermissions()) {
-                loadStatuses()
-            }
-        } else {
-            loadStatuses()
         }
     }
 
@@ -332,15 +365,65 @@ class MainActivity : AppCompatActivity() {
                         binding.videoCount.text = "$videoCount items"
                         binding.audioCount.text = "$audioCount items"
                     } else {
-                        showEmptyState()
+                        // No statuses found - offer alternative access
+                        showNoStatusesDialog()
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading statuses", e)
                 withContext(Dispatchers.Main) {
+                    Log.e(TAG, "Error loading statuses", e)
                     Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    showEmptyState()
+                    showNoStatusesDialog()
                 }
+            }
+        }
+    }
+
+    private fun showNoStatusesDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("No Statuses Found")
+            .setMessage("The app couldn't find any WhatsApp statuses. This could mean:\n\n" +
+                    "1. No one has posted statuses recently\n" +
+                    "2. Access method needs adjustment\n\n" +
+                    "Would you like to try the manual folder access method?")
+            .setPositiveButton("Try Manual Access") { _, _ ->
+                requestFolderAccess()
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                showEmptyState()
+            }
+            .show()
+    }
+
+    private fun showMediaFragment(mediaType: String) {
+        Log.d(TAG, "Showing $mediaType fragment")
+
+        binding.header.visibility = View.GONE
+        binding.homeContent.visibility = View.GONE
+
+        val fragment = MediaListFragment.newInstance(mediaType)
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
+            .commit()
+    }
+
+    fun showHomeScreen() {
+        Log.d(TAG, "Showing home screen")
+
+        supportFragmentManager.fragments.forEach {
+            supportFragmentManager.beginTransaction().remove(it).commit()
+        }
+
+        binding.header.visibility = View.VISIBLE
+        binding.homeContent.visibility = View.VISIBLE
+
+        if (checkBasicPermissions()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Environment.isExternalStorageManager()) {
+                    loadStatuses()
+                }
+            } else {
+                loadStatuses()
             }
         }
     }
@@ -367,12 +450,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         Log.d(TAG, "=== onDestroy ===")
-
         if (isFinishing) {
             Log.d(TAG, "App closing - destroying banner")
             bannerAdManager.destroy()
         }
-
         super.onDestroy()
     }
 }

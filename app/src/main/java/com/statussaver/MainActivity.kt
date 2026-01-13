@@ -8,7 +8,8 @@ import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.DocumentsContract
+import android.os.Environment
+import android.provider.Settings
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.View
@@ -34,57 +35,29 @@ class MainActivity : AppCompatActivity() {
         private const val PREFS_NAME = "AppPrefs"
         private const val KEY_FIRST_LAUNCH = "isFirstLaunch"
         private const val KEY_LANGUAGE = "app_language"
-        private const val KEY_WHATSAPP_URI = "whatsapp_uri"
-        private const val KEY_WHATSAPP_BUSINESS_URI = "whatsapp_business_uri"
+        private const val PERMISSION_REQUEST_CODE = 100
     }
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var scanner: StatusScanner
-    private val PERMISSION_REQUEST_CODE = 100
 
     private lateinit var bannerAdManager: BannerAdManager
     private lateinit var interstitialAdManager: InterstitialAdManager
 
-    // Track which flow user is in
-    private var userHasRegularWhatsApp = false
-
-    // SAF Folder Picker for WhatsApp
-    private val whatsappFolderPicker = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let {
-            Log.d(TAG, "WhatsApp folder selected: $uri")
-            saveWhatsAppUri(uri)
-            // Grant persistent permission
-            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            contentResolver.takePersistableUriPermission(uri, takeFlags)
-            
-            // If user has regular WhatsApp, ask about Business
-            if (userHasRegularWhatsApp) {
-                askAboutWhatsAppBusiness()
-            } else {
-                // User only uses Business, we're done
+    // Launcher for MANAGE_EXTERNAL_STORAGE permission (Android 11+)
+    private val manageStorageLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                Log.d(TAG, "MANAGE_EXTERNAL_STORAGE granted!")
                 loadStatuses()
+            } else {
+                Log.e(TAG, "MANAGE_EXTERNAL_STORAGE denied")
+                Toast.makeText(this, "Storage permission is required to view statuses", Toast.LENGTH_LONG).show()
+                showEmptyState()
             }
-        } ?: run {
-            Log.e(TAG, "No folder selected for WhatsApp")
-            Toast.makeText(this, "Folder access required to view statuses", Toast.LENGTH_LONG).show()
         }
-    }
-
-    // SAF Folder Picker for WhatsApp Business
-    private val whatsappBusinessFolderPicker = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let {
-            Log.d(TAG, "WhatsApp Business folder selected: $uri")
-            saveWhatsAppBusinessUri(uri)
-            // Grant persistent permission
-            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            contentResolver.takePersistableUriPermission(uri, takeFlags)
-        }
-        // Load statuses regardless of whether business folder was selected
-        loadStatuses()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         Log.d(TAG, "=== MainActivity onCreate ===")
+        Log.d(TAG, "Android Version: ${Build.VERSION.SDK_INT}")
 
         scanner = StatusScanner(this)
 
@@ -117,21 +91,8 @@ class MainActivity : AppCompatActivity() {
         }
         updateLanguageButtonText()
 
-        // Check permissions
-        if (checkBasicPermissions()) {
-            // Check if we have SAF permissions
-            if (!hasFolderPermissions()) {
-                if (isFirstLaunch()) {
-                    showPrivacyPolicyDialog()
-                } else {
-                    requestFolderAccess()
-                }
-            } else {
-                loadStatuses()
-            }
-        } else {
-            requestBasicPermissions()
-        }
+        // Check permissions based on Android version
+        handleInitialPermissions()
 
         // Button click listeners
         binding.btnImages.setOnClickListener {
@@ -150,110 +111,74 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun hasFolderPermissions(): Boolean {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val whatsappUri = prefs.getString(KEY_WHATSAPP_URI, null)
-        return whatsappUri != null
-    }
-
-    private fun saveWhatsAppUri(uri: Uri) {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_WHATSAPP_URI, uri.toString()).apply()
-        Log.d(TAG, "Saved WhatsApp URI: $uri")
-    }
-
-    private fun saveWhatsAppBusinessUri(uri: Uri) {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_WHATSAPP_BUSINESS_URI, uri.toString()).apply()
-        Log.d(TAG, "Saved WhatsApp Business URI: $uri")
-    }
-
-    fun getWhatsAppUri(): Uri? {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val uriString = prefs.getString(KEY_WHATSAPP_URI, null)
-        return uriString?.let { Uri.parse(it) }
-    }
-
-    fun getWhatsAppBusinessUri(): Uri? {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val uriString = prefs.getString(KEY_WHATSAPP_BUSINESS_URI, null)
-        return uriString?.let { Uri.parse(it) }
-    }
-
-    private fun requestFolderAccess() {
-        // Step 1: Ask if user has regular WhatsApp
-        AlertDialog.Builder(this)
-            .setTitle("WhatsApp Status Access")
-            .setMessage("Do you use regular WhatsApp?")
-            .setPositiveButton("Yes") { _, _ ->
-                userHasRegularWhatsApp = true
-                showRegularWhatsAppInstructions()
+    private fun handleInitialPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ → Need MANAGE_EXTERNAL_STORAGE
+            Log.d(TAG, "Android 11+ detected - checking MANAGE_EXTERNAL_STORAGE")
+            if (Environment.isExternalStorageManager()) {
+                Log.d(TAG, "MANAGE_EXTERNAL_STORAGE already granted")
+                if (isFirstLaunch()) {
+                    showPrivacyPolicyDialog()
+                } else {
+                    loadStatuses()
+                }
+            } else {
+                Log.d(TAG, "MANAGE_EXTERNAL_STORAGE not granted")
+                if (isFirstLaunch()) {
+                    showPrivacyPolicyDialog()
+                } else {
+                    requestManageStoragePermission()
+                }
             }
-            .setNegativeButton("No") { _, _ ->
-                userHasRegularWhatsApp = false
-                showBusinessWhatsAppInstructions()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Android 6-10 → Use READ/WRITE_EXTERNAL_STORAGE
+            Log.d(TAG, "Android 6-10 detected - using standard permissions")
+            if (checkBasicPermissions()) {
+                if (isFirstLaunch()) {
+                    showPrivacyPolicyDialog()
+                } else {
+                    loadStatuses()
+                }
+            } else {
+                if (isFirstLaunch()) {
+                    showPrivacyPolicyDialog()
+                } else {
+                    requestBasicPermissions()
+                }
+            }
+        } else {
+            // Android 5 and below - no runtime permissions needed
+            Log.d(TAG, "Android 5 or below - no runtime permissions needed")
+            if (isFirstLaunch()) {
+                showPrivacyPolicyDialog()
+            } else {
+                loadStatuses()
+            }
+        }
+    }
+
+    private fun requestManageStoragePermission() {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.storage_permission_title))
+            .setMessage(getString(R.string.storage_permission_message))
+            .setPositiveButton(getString(R.string.grant_permission)) { _, _ ->
+                try {
+                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                    manageStorageLauncher.launch(intent)
+                } catch (e: Exception) {
+                    // Fallback to general settings if specific intent fails
+                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                    manageStorageLauncher.launch(intent)
+                }
+            }
+            .setNegativeButton(getString(R.string.cancel)) { _, _ ->
+                Toast.makeText(this, "Permission required to view statuses", Toast.LENGTH_SHORT).show()
+                showEmptyState()
             }
             .setCancelable(false)
             .show()
-    }
-
-    private fun showRegularWhatsAppInstructions() {
-        AlertDialog.Builder(this)
-            .setTitle("Grant Access to WhatsApp Statuses")
-            .setMessage("To view WhatsApp statuses, grant folder access.\n\nNext steps:\n\n1️⃣ Tap 'Continue' below\n2️⃣ Tap the blue 'USE THIS FOLDER' button\n3️⃣ Tap 'ALLOW' to confirm\n\nThe correct folder is already selected for you.")
-            .setPositiveButton("Continue") { _, _ ->
-                requestWhatsAppAccess()
-            }
-            .setNegativeButton("Cancel") { _, _ ->
-                showEmptyState()
-            }
-            .show()
-    }
-
-    private fun showBusinessWhatsAppInstructions() {
-        AlertDialog.Builder(this)
-            .setTitle("Grant Access to WhatsApp Business Statuses")
-            .setMessage("To view WhatsApp Business statuses, grant folder access.\n\nNext steps:\n\n1️⃣ Tap 'Continue' below\n2️⃣ Tap the blue 'USE THIS FOLDER' button\n3️⃣ Tap 'ALLOW' to confirm\n\nThe correct folder is already selected for you.")
-            .setPositiveButton("Continue") { _, _ ->
-                requestWhatsAppBusinessAccess()
-            }
-            .setNegativeButton("Cancel") { _, _ ->
-                showEmptyState()
-            }
-            .show()
-    }
-
-    private fun askAboutWhatsAppBusiness() {
-        AlertDialog.Builder(this)
-            .setTitle("WhatsApp Business")
-            .setMessage("Do you also use WhatsApp Business?")
-            .setPositiveButton("Yes (Grant Access)") { _, _ ->
-                showBusinessWhatsAppInstructions()
-            }
-            .setNegativeButton("No") { _, _ ->
-                // User only uses regular WhatsApp, we're done
-                loadStatuses()
-            }
-            .show()
-    }
-
-    private fun requestWhatsAppAccess() {
-        // Open folder picker directly at WhatsApp .Statuses folder (internal storage only)
-        val initialUri = DocumentsContract.buildDocumentUri(
-            "com.android.externalstorage.documents",
-            "primary:Android/media/com.whatsapp/WhatsApp/Media/.Statuses"
-        )
-        
-        whatsappFolderPicker.launch(initialUri)
-    }
-
-    private fun requestWhatsAppBusinessAccess() {
-        // Open folder picker directly at WhatsApp Business .Statuses folder
-        val initialUri = DocumentsContract.buildDocumentUri(
-            "com.android.externalstorage.documents",
-            "primary:Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses"
-        )
-        whatsappBusinessFolderPicker.launch(initialUri)
     }
 
     private fun applySavedLanguage() {
@@ -329,7 +254,23 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton(getString(R.string.privacy_continue)) { dialog, _ ->
                 dialog.dismiss()
                 setFirstLaunchComplete()
-                requestFolderAccess()
+
+                // After privacy policy, check permissions
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    if (!Environment.isExternalStorageManager()) {
+                        requestManageStoragePermission()
+                    } else {
+                        loadStatuses()
+                    }
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (!checkBasicPermissions()) {
+                        requestBasicPermissions()
+                    } else {
+                        loadStatuses()
+                    }
+                } else {
+                    loadStatuses()
+                }
             }
             .show()
     }
@@ -356,17 +297,28 @@ class MainActivity : AppCompatActivity() {
         binding.header.visibility = View.VISIBLE
         binding.homeContent.visibility = View.VISIBLE
 
-        if (checkBasicPermissions() && hasFolderPermissions()) {
+        // Reload status counts
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                loadStatuses()
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkBasicPermissions()) {
+                loadStatuses()
+            }
+        } else {
             loadStatuses()
         }
     }
 
     private fun checkBasicPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         } else {
+            // Android 6-12
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
     }
@@ -405,15 +357,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                if (!hasFolderPermissions()) {
-                    if (isFirstLaunch()) {
-                        showPrivacyPolicyDialog()
-                    } else {
-                        requestFolderAccess()
-                    }
-                } else {
-                    loadStatuses()
-                }
+                loadStatuses()
             } else {
                 Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
                 showEmptyState()
@@ -444,6 +388,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Error loading statuses", e)
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                     showEmptyState()

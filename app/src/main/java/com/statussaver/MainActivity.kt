@@ -53,7 +53,7 @@ class MainActivity : AppCompatActivity() {
             saveWhatsAppBusinessUri(uri)
             
             // CRITICAL: Include both READ and WRITE flags for persistence
-            val takeFlags = it.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             try {
                 contentResolver.takePersistableUriPermission(uri, takeFlags)
                 Log.d(TAG, "Persistent URI permission granted successfully")

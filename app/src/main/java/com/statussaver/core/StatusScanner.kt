@@ -148,10 +148,20 @@ class StatusScanner(private val context: Context) {
             val pkgDir = findFolderManually(mediaDir, targetPkg)
             Log.d(TAG, "$targetPkg dir found: ${pkgDir != null}")
 
+            // CRITICAL: Some devices have different folder structures
+            // Path 1: Android/media/com.whatsapp/WhatsApp/Media/.Statuses (common)
+            // Path 2: Android/media/com.whatsapp/Media/.Statuses (some devices skip WhatsApp folder)
             val waDir = findFolderManually(pkgDir, targetMainFolder)
             Log.d(TAG, "$targetMainFolder dir found: ${waDir != null}")
 
-            val waMediaDir = findFolderManually(waDir, "Media")
+            val waMediaDir = if (waDir != null) {
+                // Standard path: WhatsApp folder exists
+                findFolderManually(waDir, "Media")
+            } else {
+                // Alternative path: Direct jump to Media (WhatsApp folder missing)
+                Log.d(TAG, "WhatsApp folder missing, trying direct Media access")
+                findFolderManually(pkgDir, "Media")
+            }
             Log.d(TAG, "Media dir found: ${waMediaDir != null}")
 
             // Final destination: .Statuses is often hidden
